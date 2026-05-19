@@ -15,7 +15,7 @@ import java.util.StringJoiner;
 
 public class SelectStep {
 
-    private final String tableName;
+    private final FromSource fromSource;
     private final Field[] fields;
     private final List<JoinClause> joins = new ArrayList<>();
     private Condition condition;
@@ -24,8 +24,8 @@ public class SelectStep {
     private final List<String> orderByClauses = new ArrayList<>();
     private Integer limitVal;
 
-    SelectStep(String tableName, Field[] fields) {
-        this.tableName = tableName;
+    SelectStep(FromSource fromSource, Field[] fields) {
+        this.fromSource = fromSource;
         this.fields = fields;
     }
 
@@ -34,20 +34,20 @@ public class SelectStep {
     }
 
     // ── JOIN ──────────────────────────────────────────────────────────
-    public JoinOnStep join(TableBase table) {
-        return new JoinOnStep(this, JoinClause.Type.INNER, table.getTableName());
+    public JoinOnStep join(FromSource source) {
+        return new JoinOnStep(this, JoinClause.Type.INNER, source);
     }
 
-    public JoinOnStep leftJoin(TableBase table) {
-        return new JoinOnStep(this, JoinClause.Type.LEFT, table.getTableName());
+    public JoinOnStep leftJoin(FromSource source) {
+        return new JoinOnStep(this, JoinClause.Type.LEFT, source);
     }
 
-    public JoinOnStep rightJoin(TableBase table) {
-        return new JoinOnStep(this, JoinClause.Type.RIGHT, table.getTableName());
+    public JoinOnStep rightJoin(FromSource source) {
+        return new JoinOnStep(this, JoinClause.Type.RIGHT, source);
     }
 
-    public SelectStep crossJoin(TableBase table) {
-        addJoin(new JoinClause(JoinClause.Type.CROSS, table.getTableName(), null));
+    public SelectStep crossJoin(FromSource source) {
+        addJoin(new JoinClause(JoinClause.Type.CROSS, source, null));
         return this;
     }
 
@@ -91,7 +91,10 @@ public class SelectStep {
         try (JdbcConnectionFactory.JdbcConnection jc = JdbcConnectionFactory.getInstance().getConnection()) {
             Connection conn = jc.get();
             try (PreparedStatement ps = conn.prepareStatement(sql)) {
-                bindParameters(ps);
+                int idx = 1;
+                for (Object binding : collectAllBindings()) {
+                    ps.setObject(idx++, binding);
+                }
                 try (ResultSet rs = ps.executeQuery()) {
                     return mapResults(rs);
                 }
@@ -112,17 +115,35 @@ public class SelectStep {
         }
     }
 
+    // ── 바인딩 수집 (서브쿼리 중첩 포함) ─────────────────────────────
+    public List<Object> collectAllBindings() {
+        List<Object> all = new ArrayList<>();
+        // SELECT 절 (윈도우 함수 바인딩)
+        if (fields != null) {
+            for (Field f : fields) all.addAll(f.getBindings());
+        }
+        // FROM 절 (서브쿼리 바인딩)
+        all.addAll(fromSource.getBindings());
+        // JOIN 절 (서브쿼리 JOIN 바인딩 + ON 바인딩)
+        for (JoinClause join : joins) all.addAll(join.getBindings());
+        // WHERE 절
+        if (condition != null) all.addAll(condition.getBindings());
+        // HAVING 절
+        if (havingCondition != null) all.addAll(havingCondition.getBindings());
+        return all;
+    }
+
     // ── SQL 빌드 ──────────────────────────────────────────────────────
     private String buildSql() {
         StringBuilder sb = new StringBuilder("SELECT ");
         if (fields == null || fields.length == 0) {
-            sb.append(joins.isEmpty() ? tableName + ".*" : "*");
+            sb.append(joins.isEmpty() ? fromSource.getPrefix() + ".*" : "*");
         } else {
             StringJoiner cols = new StringJoiner(", ");
             for (Field field : fields) cols.add(field.toSqlWithAlias());
             sb.append(cols);
         }
-        sb.append(" FROM ").append(tableName);
+        sb.append(" FROM ").append(fromSource.toFromSql());
         for (JoinClause join : joins) {
             sb.append(" ").append(join.toSql());
         }
@@ -144,32 +165,6 @@ public class SelectStep {
         return sb.toString();
     }
 
-    private void bindParameters(PreparedStatement ps) throws SQLException {
-        int idx = 1;
-        if (fields != null) {
-            for (Field field : fields) {
-                for (Object binding : field.getBindings()) {
-                    ps.setObject(idx++, binding);
-                }
-            }
-        }
-        for (JoinClause join : joins) {
-            for (Object binding : join.getBindings()) {
-                ps.setObject(idx++, binding);
-            }
-        }
-        if (condition != null) {
-            for (Object binding : condition.getBindings()) {
-                ps.setObject(idx++, binding);
-            }
-        }
-        if (havingCondition != null) {
-            for (Object binding : havingCondition.getBindings()) {
-                ps.setObject(idx++, binding);
-            }
-        }
-    }
-
     private List<Record> mapResults(ResultSet rs) throws SQLException {
         ResultSetMetaData meta = rs.getMetaData();
         int columnCount = meta.getColumnCount();
@@ -181,12 +176,9 @@ public class SelectStep {
                 String label = meta.getColumnLabel(i).toLowerCase();
                 Object value = rs.getObject(i);
                 if (tableRef != null && !tableRef.isEmpty()) {
-                    // 정규화된 키(table.column)로 저장 — JOIN 시 동명 컬럼 충돌 방지
                     row.put(tableRef.toLowerCase() + "." + label, value);
-                    // 단순 이름은 먼저 나온 컬럼이 우선
                     row.putIfAbsent(label, value);
                 } else {
-                    // 윈도우 함수 alias 등 테이블 정보 없는 표현식
                     row.put(label, value);
                 }
             }
