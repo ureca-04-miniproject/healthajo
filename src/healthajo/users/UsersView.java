@@ -119,7 +119,7 @@ public class UsersView extends JPanel {
         JTextField nameField = new JTextField();
         JTextField phoneField = new JTextField();
         JTextField emailField = new JTextField();
-        JComboBox<String> roleBox = new JComboBox<>(new String[]{"user", "admin"});
+        JComboBox<String> roleBox = new JComboBox<>(new String[]{"USER", "ADMIN"});
 
         form.add(new JLabel("이름:")); form.add(nameField);
         form.add(new JLabel("전화번호:")); form.add(phoneField);
