@@ -54,6 +54,46 @@ public class Condition {
         return new Condition(left.getQualifiedName() + " " + op + " " + right.getQualifiedName(), List.of());
     }
 
+    // 서브쿼리 비교: col = (SELECT ...), col > (SELECT ...) 등
+    static Condition binarySubquery(Column<?> col, String op, SelectStep subquery) {
+        return new Condition(
+            col.getQualifiedName() + " " + op + " (" + subquery.toSql() + ")",
+            new ArrayList<>(subquery.collectAllBindings())
+        );
+    }
+
+    // col IN (SELECT ...)
+    static Condition inSubquery(Column<?> col, SelectStep subquery) {
+        return new Condition(
+            col.getQualifiedName() + " IN (" + subquery.toSql() + ")",
+            new ArrayList<>(subquery.collectAllBindings())
+        );
+    }
+
+    // col NOT IN (SELECT ...)
+    static Condition notInSubquery(Column<?> col, SelectStep subquery) {
+        return new Condition(
+            col.getQualifiedName() + " NOT IN (" + subquery.toSql() + ")",
+            new ArrayList<>(subquery.collectAllBindings())
+        );
+    }
+
+    // EXISTS (SELECT ...)
+    public static Condition exists(SelectStep subquery) {
+        return new Condition(
+            "EXISTS (" + subquery.toSql() + ")",
+            new ArrayList<>(subquery.collectAllBindings())
+        );
+    }
+
+    // NOT EXISTS (SELECT ...)
+    public static Condition notExists(SelectStep subquery) {
+        return new Condition(
+            "NOT EXISTS (" + subquery.toSql() + ")",
+            new ArrayList<>(subquery.collectAllBindings())
+        );
+    }
+
     public static Condition raw(String sql, Object... bindings) {
         return new Condition(sql, new ArrayList<>(Arrays.asList(bindings)));
     }

@@ -45,4 +45,16 @@ public class Column<T> implements Field {
     public Condition lt(Column<?> other) { return Condition.columnCompare(this, "<", other); }
     public Condition ge(Column<?> other) { return Condition.columnCompare(this, ">=", other); }
     public Condition le(Column<?> other) { return Condition.columnCompare(this, "<=", other); }
+
+    // 서브쿼리 비교 (스칼라 서브쿼리 WHERE 용)
+    public Condition eq(SelectStep subquery) { return Condition.binarySubquery(this, "=",  subquery); }
+    public Condition ne(SelectStep subquery) { return Condition.binarySubquery(this, "!=", subquery); }
+    public Condition gt(SelectStep subquery) { return Condition.binarySubquery(this, ">",  subquery); }
+    public Condition lt(SelectStep subquery) { return Condition.binarySubquery(this, "<",  subquery); }
+    public Condition ge(SelectStep subquery) { return Condition.binarySubquery(this, ">=", subquery); }
+    public Condition le(SelectStep subquery) { return Condition.binarySubquery(this, "<=", subquery); }
+
+    // IN (SELECT ...) / NOT IN (SELECT ...)
+    public Condition in(SelectStep subquery)    { return Condition.inSubquery(this, subquery); }
+    public Condition notIn(SelectStep subquery) { return Condition.notInSubquery(this, subquery); }
 }
