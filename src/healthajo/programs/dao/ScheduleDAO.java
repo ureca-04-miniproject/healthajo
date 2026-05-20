@@ -79,10 +79,13 @@ public class ScheduleDAO {
     // 신규 생성 — 폼 입력 값으로 직접 받음. LocalDate → java.sql.Date 변환은 DAO 내부에서 처리.
     public long insertSimple(long programId, LocalDate startDate, LocalDate endDate, int defaultCapacity) {
         return PS.insertInto()
-                .set(PS.PROGRAM_ID,       programId)
-                .set(PS.START_DATE,       Date.valueOf(startDate))
-                .set(PS.END_DATE,         Date.valueOf(endDate))
-                .set(PS.DEFAULT_CAPACITY, defaultCapacity)
+                .set(PS.PROGRAM_ID,        programId)
+                .set(PS.START_DATE,        Date.valueOf(startDate))
+                .set(PS.END_DATE,          Date.valueOf(endDate))
+                .set(PS.DEFAULT_CAPACITY,  defaultCapacity)
+                // FIXED_WEEKLY 스케줄은 FREE_SLOT 전용 컬럼을 쓰지 않지만,
+                // DB에 NOT NULL(기본값 없음)로 잡혀 있어 0으로 채운다.
+                .set(PS.SLOT_DURATION_TIME, 0)
                 .executeAndReturnKey();
     }
 

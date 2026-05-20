@@ -7,6 +7,7 @@ import healthajo.component.HTabPanel;
 import healthajo.component.HTable;
 import healthajo.component.HToast;
 import healthajo.component.theme.AppTheme;
+import healthajo.jdbc.core.Page;
 import healthajo.jdbc.core.Record;
 import healthajo.programs.dto.ProgramResponseDTO;
 import healthajo.programs.dto.ScheduleListItemDTO;
@@ -36,6 +37,13 @@ public class ProgramDetailDialog extends JDialog {
     private ProgramService service;
     private final String programName;
     private final Long programId;
+
+    // 세션 탭 새로고침 콜백 — 스케줄 추가/편집/삭제 후 세션 목록을 갱신하기 위해 사용.
+    private Runnable sessionTabReload;
+
+    private void refreshSessionTab() {
+        if (sessionTabReload != null) sessionTabReload.run();
+    }
 
     public ProgramDetailDialog(JFrame parent, Object[] data, ProgramService service) {
         super(parent, "프로그램 상세", true);
@@ -137,15 +145,20 @@ public class ProgramDetailDialog extends JDialog {
         Runnable reload = () -> {
             m.setRowCount(0);
             scheduleIds.clear();
-            for (ScheduleListItemDTO dto : service.findListItemsByProgramId(programId)) {
-                scheduleIds.add(dto.getId());
-                m.addRow(new Object[]{
-                        "FIXED_WEEKLY",
-                        dto.getClassStartDate(),
-                        dto.getClassEndDate(),
-                        dto.getCapacity(),
-                        dto.getWeekdayCount()
-                });
+            try {
+                for (ScheduleListItemDTO dto : service.findListItemsByProgramId(programId)) {
+                    scheduleIds.add(dto.getId());
+                    m.addRow(new Object[]{
+                            "FIXED_WEEKLY",
+                            dto.getClassStartDate(),
+                            dto.getClassEndDate(),
+                            dto.getCapacity(),
+                            dto.getWeekdayCount()
+                    });
+                }
+            } catch (Exception ex) {
+                ex.printStackTrace();
+                HDialog.error(parent, "스케줄 목록을 불러오지 못했습니다.\n" + ex.getMessage());
             }
         };
         reload.run();
@@ -177,6 +190,7 @@ public class ProgramDetailDialog extends JDialog {
                         vals[2].toString(), vals[3].toString(),
                         cap, dlg.getWeekdayRows());
                 reload.run();
+                refreshSessionTab();
                 HToast.success(parent, "스케줄이 추가되었습니다.");
             } catch (Exception ex) {
                 HDialog.error(parent, "스케줄 추가 실패: " + ex.getMessage());
@@ -205,6 +219,7 @@ public class ProgramDetailDialog extends JDialog {
                         vals[2].toString(), vals[3].toString(),
                         cap, dlg.getWeekdayRows());
                 reload.run();
+                refreshSessionTab();
                 HToast.success(parent, "스케줄이 수정되었습니다.");
             } catch (Exception ex) {
                 HDialog.error(parent, "스케줄 수정 실패: " + ex.getMessage());
@@ -226,10 +241,11 @@ public class ProgramDetailDialog extends JDialog {
                 boolean deleted = service.deleteSchedule(scheduleId);
                 if (deleted) {
                     reload.run();
+                    refreshSessionTab();
                     HToast.success(parent, "스케줄이 삭제되었습니다.");
                 } else {
                     HDialog.alert(parent, "삭제 불가",
-                            "해당 스케줄로 생성된 세션이 있어 삭제할 수 없습니다.\n세션을 먼저 정리하세요.",
+                            "예약자가 있는 세션이 포함되어 삭제할 수 없습니다.\n예약을 먼저 취소한 뒤 삭제하세요.",
                             HDialog.Type.WARNING);
                 }
             } catch (Exception ex) {
@@ -256,18 +272,60 @@ public class ProgramDetailDialog extends JDialog {
             @Override public boolean isCellEditable(int r, int c) { return false; }
         };
 
-        List<SessionListItemDTO> sessions = service.findSessionListByProgramId(programId);
-        for (SessionListItemDTO dto : sessions) {
-            m.addRow(new Object[]{
-                    dto.getSessionDate(),
-                    dto.getStartTime(),
-                    dto.getEndTime(),
-                    String.valueOf(dto.getCapacity()),
-                    String.valueOf(dto.getBookedCount()),
-                    dto.getInstructorName(),
-                    dto.getStatus()
-            });
-        }
+        // 행 인덱스 ↔ session_id 매핑
+        final java.util.List<Long> sessionIds = new java.util.ArrayList<>();
+
+        // 페이지네이션 상태 (0-based, 페이지 크기 10)
+        final int pageSize = 10;
+        final int[] sessionPage = {0};
+
+        // 페이저 푸터
+        JPanel pager = new JPanel(new FlowLayout(FlowLayout.CENTER, AppTheme.SP_2, AppTheme.SP_2));
+        pager.setBackground(AppTheme.BG);
+        HButton prevBtn = HButton.ghost("◀ 이전", HButton.Size.SM);
+        HButton nextBtn = HButton.ghost("다음 ▶", HButton.Size.SM);
+        JLabel pageInfo = new JLabel("1 / 1");
+        pager.add(prevBtn);
+        pager.add(pageInfo);
+        pager.add(nextBtn);
+
+        Runnable reload = () -> {
+            m.setRowCount(0);
+            sessionIds.clear();
+            try {
+                Page<SessionListItemDTO> pg =
+                        service.findSessionListByProgramId(programId, sessionPage[0], pageSize);
+                for (SessionListItemDTO dto : pg.getContent()) {
+                    sessionIds.add(dto.getId());
+                    m.addRow(new Object[]{
+                            dto.getSessionDate(),
+                            dto.getStartTime(),
+                            dto.getEndTime(),
+                            String.valueOf(dto.getCapacity()),
+                            String.valueOf(dto.getBookedCount()),
+                            dto.getInstructorName(),
+                            dto.getStatus()
+                    });
+                }
+                pageInfo.setText((sessionPage[0] + 1) + " / " + Math.max(1, pg.getTotalPages())
+                        + "  (총 " + pg.getTotalCount() + "건)");
+                prevBtn.setEnabled(sessionPage[0] > 0);
+                nextBtn.setEnabled(sessionPage[0] < pg.getTotalPages() - 1);
+            } catch (Exception ex) {
+                ex.printStackTrace();
+                HDialog.error((JFrame) getOwner(), "세션 목록을 불러오지 못했습니다.\n" + ex.getMessage());
+            }
+        };
+
+        prevBtn.addActionListener(e -> {
+            if (sessionPage[0] > 0) { sessionPage[0]--; reload.run(); }
+        });
+        nextBtn.addActionListener(e -> { sessionPage[0]++; reload.run(); });
+
+        // 스케줄 추가/편집/삭제 후 세션 탭을 첫 페이지부터 다시 로드하도록 콜백 등록
+        sessionTabReload = () -> { sessionPage[0] = 0; reload.run(); };
+
+        reload.run();
 
         HTable sTable = new HTable(m);
         sTable.setBadgeRenderer(6);
@@ -279,25 +337,61 @@ public class ProgramDetailDialog extends JDialog {
         HButton cancelBtn = HButton.danger("세션 취소",   HButton.Size.SM);
 
         assignBtn.addActionListener(e -> {
-            int row = sTable.getSelectedRow();
-            if (row < 0) { HDialog.info((JFrame) getOwner(), "세션을 선택하세요."); return; }
-            // TODO: 강사 목록 조회 → JComboBox 선택 → UPDATE sessions SET instructor_id = ?
-            HDialog.info((JFrame) getOwner(), "강사 배정 기능은 구현 예정입니다.");
+            int viewRow = sTable.getSelectedRow();
+            if (viewRow < 0) { HDialog.info((JFrame) getOwner(), "세션을 선택하세요."); return; }
+            int mr = sTable.convertRowIndexToModel(viewRow);
+            if ("CANCELLED".equals(String.valueOf(m.getValueAt(mr, 6)))) {
+                HDialog.alert((JFrame) getOwner(), "안내", "취소된 세션에는 강사를 배정할 수 없습니다.", HDialog.Type.WARNING);
+                return;
+            }
+            long sessionId = sessionIds.get(mr);
+            List<healthajo.session.domain.Instructor> instructors;
+            try {
+                instructors = service.getActiveInstructors();
+            } catch (Exception ex) {
+                HDialog.error((JFrame) getOwner(), "강사 목록을 불러오지 못했습니다.\n" + ex.getMessage());
+                return;
+            }
+            if (instructors.isEmpty()) {
+                HDialog.alert((JFrame) getOwner(), "안내", "배정 가능한 활성 강사가 없습니다.", HDialog.Type.WARNING);
+                return;
+            }
+            healthajo.session.domain.Instructor selected =
+                (healthajo.session.domain.Instructor) JOptionPane.showInputDialog(
+                    (JFrame) getOwner(), "배정할 강사를 선택하세요:", "강사 배정",
+                    JOptionPane.PLAIN_MESSAGE, null,
+                    instructors.toArray(), instructors.get(0));
+            if (selected == null) return;
+            try {
+                service.assignInstructor(sessionId, selected.id());
+                reload.run();
+                HToast.success((JFrame) getOwner(), "강사가 배정되었습니다: " + selected.name());
+            } catch (Exception ex) {
+                HDialog.error((JFrame) getOwner(), "강사 배정 실패\n" + ex.getMessage());
+            }
         });
 
         cancelBtn.addActionListener(e -> {
             int viewRow = sTable.getSelectedRow();
             if (viewRow < 0) { HDialog.info((JFrame) getOwner(), "세션을 선택하세요."); return; }
             int mr     = sTable.convertRowIndexToModel(viewRow);
+            if ("CANCELLED".equals(String.valueOf(m.getValueAt(mr, 6)))) {
+                HDialog.alert((JFrame) getOwner(), "안내", "이미 취소된 세션입니다.", HDialog.Type.WARNING);
+                return;
+            }
+            long sessionId = sessionIds.get(mr);
             String date   = (String) m.getValueAt(mr, 0);
             String booked = (String) m.getValueAt(mr, 4);
             if (HDialog.confirmDanger((JFrame) getOwner(), "세션 취소",
                     "[" + date + "] 세션을 취소하시겠습니까?\n" +
                     "예약자 " + booked + "명의 예약이 자동 취소되고 횟수가 복구됩니다.")) {
-                // TODO: UPDATE sessions SET status='CANCELLED' WHERE id=?
-                //       UPDATE reservations SET status='CANCELLED' WHERE session_id=?
-                m.setValueAt("CANCELLED", mr, 6);
-                HToast.success((JFrame) getOwner(), "세션이 취소되었습니다.");
+                try {
+                    service.cancelSession(sessionId);
+                    reload.run();
+                    HToast.success((JFrame) getOwner(), "세션이 취소되었습니다.");
+                } catch (Exception ex) {
+                    HDialog.error((JFrame) getOwner(), "세션 취소 실패\n" + ex.getMessage());
+                }
             }
         });
 
@@ -305,6 +399,7 @@ public class ProgramDetailDialog extends JDialog {
         toolbar.add(cancelBtn);
         p.add(toolbar,            BorderLayout.NORTH);
         p.add(sTable.inScrollPane(), BorderLayout.CENTER);
+        p.add(pager,              BorderLayout.SOUTH);
         return p;
     }
 
@@ -319,20 +414,59 @@ public class ProgramDetailDialog extends JDialog {
             @Override public boolean isCellEditable(int r, int c) { return false; }
         };
 
-        // MOCK
-        // TODO: SELECT u.name, u.phone, r.status, r.attendance_status,
-        //              DATE_FORMAT(r.reserved_at,'%Y-%m-%d')
-        //       FROM reservations r JOIN users u ON u.id = r.user_id
-        //       JOIN sessions s ON s.id = r.session_id
-        //       WHERE s.program_id = ? AND r.status != 'CANCELLED'
-        m.addRow(new Object[]{"홍길동", "010-1234-5678", "CONFIRMED",        "PENDING",  "2025-05-01"});
-        m.addRow(new Object[]{"김영희", "010-2345-6789", "MEMBERSHIP_ISSUED", "ATTENDED", "2025-04-20"});
+        // 페이지네이션 상태 (0-based, 페이지 크기 10)
+        final int pageSize = 10;
+        final int[] resPage = {0};
+
+        // 페이저 푸터
+        JPanel pager = new JPanel(new FlowLayout(FlowLayout.CENTER, AppTheme.SP_2, AppTheme.SP_2));
+        pager.setBackground(AppTheme.BG);
+        HButton prevBtn = HButton.ghost("◀ 이전", HButton.Size.SM);
+        HButton nextBtn = HButton.ghost("다음 ▶", HButton.Size.SM);
+        JLabel pageInfo = new JLabel("1 / 1");
+        pager.add(prevBtn);
+        pager.add(pageInfo);
+        pager.add(nextBtn);
+
+        Runnable reload = () -> {
+            m.setRowCount(0);
+            try {
+                Page<Record> pg = service.findReservationsByProgramId(programId, resPage[0], pageSize);
+                for (Record r : pg.getContent()) {
+                    Object reservedAt = r.get("reserved_at");
+                    String reservedStr = reservedAt == null ? "" : reservedAt.toString();
+                    if (reservedStr.length() >= 10) reservedStr = reservedStr.substring(0, 10);
+                    m.addRow(new Object[]{
+                            r.get("user_name"),
+                            r.get("user_phone"),
+                            r.get("status"),
+                            r.get("attendance_status"),
+                            reservedStr
+                    });
+                }
+                pageInfo.setText((resPage[0] + 1) + " / " + Math.max(1, pg.getTotalPages())
+                        + "  (총 " + pg.getTotalCount() + "건)");
+                prevBtn.setEnabled(resPage[0] > 0);
+                nextBtn.setEnabled(resPage[0] < pg.getTotalPages() - 1);
+            } catch (Exception ex) {
+                ex.printStackTrace();
+                HDialog.error((JFrame) getOwner(), "예약자 목록을 불러오지 못했습니다.\n" + ex.getMessage());
+            }
+        };
+
+        prevBtn.addActionListener(e -> {
+            if (resPage[0] > 0) { resPage[0]--; reload.run(); }
+        });
+        nextBtn.addActionListener(e -> { resPage[0]++; reload.run(); });
+
+        reload.run();
 
         HTable rTable = new HTable(m);
         rTable.setBadgeRenderer(2);
         rTable.setBadgeRenderer(3);
 
         p.add(rTable.inScrollPane(), BorderLayout.CENTER);
+        p.add(pager,                 BorderLayout.SOUTH);
         return p;
     }
 

@@ -46,6 +46,7 @@ public class MembershipAdminPanel extends BaseListPanel {
     @Override protected String   pageTitle()         { return "회원권 관리"; }
     @Override protected boolean  hasCheckbox()       { return false; }
     @Override protected String   searchPlaceholder() { return "회원명 또는 프로그램명 검색"; }
+    @Override protected boolean  serverSideSearch()  { return true; }
 
     @Override
     protected String[] columnNames() {
@@ -80,8 +81,8 @@ public class MembershipAdminPanel extends BaseListPanel {
         ids().clear();
         long totalCount = 0;
         try {
-            List<Record> memberships = MEMBERSHIP_SERVICE.getAllMembershipsWithUserAndProgram(pageSize, currentPage - 1);
-            totalCount = MEMBERSHIP_SERVICE.countAllMemberships();
+            List<Record> memberships = MEMBERSHIP_SERVICE.getAllMembershipsWithUserAndProgram(pageSize, currentPage - 1, searchKeyword);
+            totalCount = MEMBERSHIP_SERVICE.countAllMemberships(searchKeyword);
             for (Record record : memberships) {
                 Long membershipId = firstLong(record, "membership_id", "id", "memberships.id");
                 ids().add(membershipId);

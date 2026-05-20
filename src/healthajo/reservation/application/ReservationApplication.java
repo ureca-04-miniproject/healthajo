@@ -19,6 +19,10 @@ public class ReservationApplication {
         return dao.findAll(pageNumber, pageSize);
     }
 
+    public Page<Reservation> findAll(int pageNumber, int pageSize, String keyword) {
+        return dao.findAll(pageNumber, pageSize, keyword);
+    }
+
     /**
      * 강제 취소 — 예약 상태를 CANCELLED로 변경하고 세션 예약 인원을 1 감소.
      * 회원권으로 발급된 예약(membership_id 존재)이면 잔여 횟수를 복구한다.

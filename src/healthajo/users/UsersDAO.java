@@ -1,6 +1,8 @@
 package healthajo.users;
 
+import healthajo.jdbc.core.Condition;
 import healthajo.jdbc.core.Page;
+import healthajo.jdbc.core.SelectStep;
 import healthajo.jdbc.table.TUser;
 import healthajo.jdbc.table.TMembership;
 import healthajo.jdbc.table.TPrograms;
@@ -27,6 +29,18 @@ public class UsersDAO {
     }
 
     public Page<Record> findAllWithStats(int pageNumber, int pageSize) {
+        return findAllWithStats(pageNumber, pageSize, null);
+    }
+
+    public Page<Record> findAllWithStats(int pageNumber, int pageSize, String keyword) {
+        Condition where = T.DELETED_AT.isNull();
+        if (keyword != null && !keyword.isBlank()) {
+            String like = "%" + keyword.trim() + "%";
+            where = where.and(
+                    T.NAME.like(like)
+                            .or(T.PHONE.like(like))
+                            .or(T.EMAIL.like(like)));
+        }
         return Page.of(
                 T.select(
                                 T.ID,
@@ -37,7 +51,7 @@ public class UsersDAO {
                                 field("(SELECT COALESCE(SUM(m.remaining_count), 0) " +
                                         "FROM memberships m WHERE m.user_id = users.id) AS membership_count")
                         )
-                        .where(T.DELETED_AT.isNull())
+                        .where(where)
                         .orderBy(T.ID),
                 pageNumber,
                 pageSize
@@ -133,6 +147,25 @@ public class UsersDAO {
                 .where(RESERVATION.USER_ID.eq(userId))
                 .orderByDesc(SESSIONS.SESSION_DATE)
                 .fetch();
+    }
+
+    /**
+     * 특정 사용자의 예약 이력 (프로그램·세션 조인) — 서버 사이드 페이징.
+     * 컬럼: program_name, session_date, status, attendance_status, reserved_at
+     */
+    public Page<Record> findReservationsByUserId(Long userId, int pageNumber, int pageSize) {
+        SelectStep step = RESERVATION.select(
+                        PROGRAMS.NAME.as("program_name"),
+                        SESSIONS.SESSION_DATE,
+                        RESERVATION.STATUS,
+                        RESERVATION.ATTENDANCE_STATUS,
+                        RESERVATION.RESERVED_AT
+                )
+                .join(SESSIONS).on(RESERVATION.SESSION_ID.eq(SESSIONS.ID))
+                .join(PROGRAMS).on(RESERVATION.PROGRAM_ID.eq(PROGRAMS.ID))
+                .where(RESERVATION.USER_ID.eq(userId))
+                .orderByDesc(SESSIONS.SESSION_DATE);
+        return Page.of(step, pageNumber, pageSize);
     }
 
     public void delete(Long id) {

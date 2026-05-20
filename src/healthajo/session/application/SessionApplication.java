@@ -18,6 +18,14 @@ public class SessionApplication {
         return dao.findAllForAdmin(pageNumber, pageSize);
     }
 
+    public Page<AdminSession> findAllForAdmin(int pageNumber, int pageSize, String keyword) {
+        return dao.findAllForAdmin(pageNumber, pageSize, keyword);
+    }
+
+    public Page<AdminSession> findAllForAdmin(int pageNumber, int pageSize, String keyword, java.time.LocalDate date) {
+        return dao.findAllForAdmin(pageNumber, pageSize, keyword, date);
+    }
+
     public List<Instructor> findActiveInstructors() {
         return dao.findActiveInstructors();
     }

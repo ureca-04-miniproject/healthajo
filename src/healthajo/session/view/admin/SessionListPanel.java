@@ -3,6 +3,7 @@ package healthajo.session.view.admin;
 import healthajo.attendance.domain.AttendanceSession;
 import healthajo.attendance.view.admin.AttendanceDetailDialog;
 import healthajo.component.HButton;
+import healthajo.component.HDatePicker;
 import healthajo.component.HDialog;
 import healthajo.component.HTable;
 import healthajo.component.HToast;
@@ -12,6 +13,8 @@ import healthajo.session.application.SessionApplication;
 import healthajo.session.domain.AdminSession;
 import healthajo.session.domain.Instructor;
 import healthajo.template.BaseListPanel;
+import java.awt.Dimension;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import javax.swing.*;
@@ -26,11 +29,19 @@ public class SessionListPanel extends BaseListPanel {
 
     private final List<AdminSession> sessions = new ArrayList<>();
 
-    public SessionListPanel() { super(); }
+    private LocalDate   selectedDate;   // null = 전체 날짜
+    private HDatePicker datePicker;
+
+    public SessionListPanel() {
+        super();
+        model.setRowCount(0);
+        loadData();
+    }
 
     @Override protected String   pageTitle()         { return "세션 관리"; }
     @Override protected boolean  hasCheckbox()       { return false; }
     @Override protected String   searchPlaceholder() { return "프로그램명 또는 날짜 검색"; }
+    @Override protected boolean  serverSideSearch()  { return true; }
 
     @Override
     protected String[] columnNames() {
@@ -39,13 +50,32 @@ public class SessionListPanel extends BaseListPanel {
 
     @Override
     protected List<? extends JComponent> toolbarButtons() {
-        HButton assignBtn = HButton.secondary("강사 배정", HButton.Size.SM);
-        assignBtn.addActionListener(e -> onAssignInstructor());
+        selectedDate = null; // 기본: 전체 날짜
 
+        JLabel dateCaption = new JLabel("날짜 필터");
+        dateCaption.setFont(AppTheme.BODY_SM);
+        dateCaption.setForeground(AppTheme.TEXT_SECONDARY);
+
+        datePicker = new HDatePicker("전체");
+        datePicker.setPreferredSize(new Dimension(140, 36));
+        datePicker.setMaximumSize(new Dimension(140, 36));
+
+        HButton searchBtn = HButton.primary("조회", HButton.Size.SM);
+        HButton allBtn    = HButton.ghost("전체", HButton.Size.SM);
+        HButton assignBtn = HButton.secondary("강사 배정", HButton.Size.SM);
         HButton cancelBtn = HButton.danger("세션 취소", HButton.Size.SM);
+
+        searchBtn.addActionListener(e -> { selectedDate = datePicker.getDate(); currentPage = 1; reload(); });
+        allBtn.addActionListener(e -> { selectedDate = null; datePicker.setDate(null); currentPage = 1; reload(); });
+        assignBtn.addActionListener(e -> onAssignInstructor());
         cancelBtn.addActionListener(e -> onCancelSession());
 
-        return List.of(assignBtn, cancelBtn);
+        return List.of(dateCaption, datePicker, searchBtn, allBtn, assignBtn, cancelBtn);
+    }
+
+    private void reload() {
+        model.setRowCount(0);
+        loadData();
     }
 
     @Override
@@ -62,7 +92,7 @@ public class SessionListPanel extends BaseListPanel {
         if (sessions == null) return;  // super() 호출 시점엔 필드 미초기화
         sessions.clear();
         try {
-            Page<AdminSession> page = APP.findAllForAdmin(currentPage - 1, pageSize);
+            Page<AdminSession> page = APP.findAllForAdmin(currentPage - 1, pageSize, searchKeyword, selectedDate);
             for (AdminSession s : page.getContent()) {
                 sessions.add(s);
                 model.addRow(toRow(s));

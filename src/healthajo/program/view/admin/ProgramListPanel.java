@@ -43,6 +43,7 @@ public class ProgramListPanel extends BaseListPanel {
     @Override protected String   pageTitle()       { return "프로그램 관리"; }
     @Override protected boolean  hasCheckbox()     { return true; }
     @Override protected String   searchPlaceholder() { return "프로그램명 또는 종목 검색"; }
+    @Override protected boolean  serverSideSearch()  { return true; }
 
     @Override
     protected String[] columnNames() {
@@ -81,25 +82,27 @@ public class ProgramListPanel extends BaseListPanel {
 
     @Override
     protected void loadData() {
-        // TODO: DB 조회 후 교체
-//        dao.findAll();
-        List<ProgramResponseDTO> dtos = getService().getProgramList();
-
-        for(ProgramResponseDTO dto : dtos) {
-            model.addRow(new Object[]{
-                    false,                       // [0] 체크박스 (HTable.setCheckboxColumn(0)이 토글하는 자리)
-                    dto.getProgramId(),          // [1] ID (숨김 컬럼, 체크박스 클릭과 무관하게 보존)
-                    dto.getName(),               // [2] 프로그램명
-                    dto.getType(),               // [3] 종목
-                    dto.getReservationTime(),    // [4] 예약 가능 기간
-                    "-",                         // [5] 총 정원
-                    "-",                         // [6] 예약 수
-                    dto.getStatus()              // [7] 상태
-            });
+        try {
+            healthajo.jdbc.core.Page<ProgramResponseDTO> page =
+                    getService().getProgramList(currentPage - 1, pageSize, searchKeyword);
+            for (ProgramResponseDTO dto : page.getContent()) {
+                model.addRow(new Object[]{
+                        false,                       // [0] 체크박스
+                        dto.getProgramId(),          // [1] ID (숨김 컬럼)
+                        dto.getName(),               // [2] 프로그램명
+                        dto.getType(),               // [3] 종목
+                        dto.getReservationTime(),    // [4] 예약 가능 기간
+                        "-",                         // [5] 총 정원
+                        "-",                         // [6] 예약 수
+                        dto.getStatus()              // [7] 상태
+                });
+            }
+            setTotalCount((int) page.getTotalCount());
+        } catch (RuntimeException ex) {
+            ex.printStackTrace();
+            HDialog.error(parentFrame(), "프로그램 목록을 불러오지 못했습니다.\n" + ex.getMessage());
+            setTotalCount(0);
         }
-        // MOCK: 개발용 목 데이터
-//        model.addRow(new Object[]{false, "스피닝 A반",    "SPINNING",  "2025-04-01 ~ 2025-09-30", "20", "15", "ACTIVE"});
-        setTotalCount(model.getRowCount());
     }
 
     @Override
@@ -182,22 +185,39 @@ public class ProgramListPanel extends BaseListPanel {
             return;
         }
         int modelRow   = table.convertRowIndexToModel(viewRow);
-        String program = (String) getDataValue(modelRow, 0);
-        String booked  = (String) getDataValue(modelRow, 4);
+        long programId = Long.parseLong(String.valueOf(model.getValueAt(modelRow, 1))); // [1] ID
+        String program = String.valueOf(model.getValueAt(modelRow, 2));                  // [2] 프로그램명
 
-        if (HDialog.confirm(parentFrame(), "회원권 일괄 발급",
+        String input = JOptionPane.showInputDialog(parentFrame(),
                 "[" + program + "]\n" +
-                "CONFIRMED 상태 예약자 " + booked + "명에게 회원권을 발급하시겠습니까?\n" +
-                "발급되는 회원권: " + program + " 수강권")) {
-            // TODO: INSERT INTO memberships (user_id, program_id, name, type, total_count,
-            //                               remaining_count, status, issued_at)
-            //       SELECT r.user_id, ?, ?, 'COUNT', ?, ?, 'ACTIVE', NOW()
-            //       FROM reservations r
-            //       WHERE r.session_id IN (SELECT id FROM sessions WHERE program_id = ?)
-            //         AND r.status = 'CONFIRMED'
-            //       UPDATE reservations SET status = 'MEMBERSHIP_ISSUED', membership_id = ...
+                "이 프로그램의 CONFIRMED 예약자에게 회원권을 일괄 발급합니다.\n" +
+                "발급할 회원권의 총 횟수를 입력하세요:",
+                "회원권 일괄 발급", JOptionPane.PLAIN_MESSAGE);
+        if (input == null || input.isBlank()) return;
 
-            HToast.success(parentFrame(), booked + "명에게 회원권이 발급되었습니다.");
+        int totalCount;
+        try {
+            totalCount = Integer.parseInt(input.trim());
+        } catch (NumberFormatException ex) {
+            HDialog.error(parentFrame(), "총 횟수는 숫자로 입력하세요.");
+            return;
+        }
+        if (totalCount <= 0) {
+            HDialog.error(parentFrame(), "총 횟수는 1 이상이어야 합니다.");
+            return;
+        }
+
+        try {
+            int issued = getService().bulkIssueMembership(programId, program, totalCount);
+            if (issued == 0) {
+                HDialog.info(parentFrame(), "발급 대상(CONFIRMED 예약자)이 없습니다.");
+            } else {
+                HToast.success(parentFrame(), issued + "명에게 회원권이 발급되었습니다.");
+                reload();
+            }
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            HDialog.error(parentFrame(), "회원권 일괄 발급 실패\n" + ex.getMessage());
         }
     }
 

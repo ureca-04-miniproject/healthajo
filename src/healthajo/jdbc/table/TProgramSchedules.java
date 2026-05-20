@@ -19,7 +19,7 @@ public final class TProgramSchedules extends TableBase {
     public final Column<Integer>    DEFAULT_CAPACITY                    = new Column<>(getTableName(), "default_capacity", Integer.class);
     public final Column<LocalTime>  SLOT_OPEN_TIME                      = new Column<>(getTableName(), "slot_open_time", LocalTime.class);
     public final Column<LocalTime>  SLOT_CLOSE_TIME                      = new Column<>(getTableName(), "slot_close_time", LocalTime.class);
-    public final Column<Integer>    SLOT_DURATION_TIME                      = new Column<>(getTableName(), "slot_duration_time", Integer.class);
+    public final Column<Integer>    SLOT_DURATION_TIME                      = new Column<>(getTableName(), "slot_duration_min", Integer.class);
     public final Column<LocalDateTime>  CREATED_AT                          = new Column<>(getTableName(), "created_at", LocalDateTime.class);
     public final Column<LocalDateTime>  UPDATED_AT                          = new Column<>(getTableName(), "updated_at", LocalDateTime.class);
 

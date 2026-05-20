@@ -32,9 +32,37 @@ public class ReservationDao {
     }
 
     public Page<Reservation> findAll(int pageNumber, int pageSize) {
-        SelectStep step = buildBaseSelect()
-            .orderByDesc(RESERVATION.RESERVED_AT);
+        return findAll(pageNumber, pageSize, null);
+    }
+
+    public Page<Reservation> findAll(int pageNumber, int pageSize, String keyword) {
+        SelectStep step;
+        if (keyword != null && !keyword.isBlank()) {
+            step = buildBaseSelect()
+                .where(adminSearchClause(keyword))
+                .orderByDesc(RESERVATION.RESERVED_AT);
+        } else {
+            step = buildBaseSelect()
+                .orderByDesc(RESERVATION.RESERVED_AT);
+        }
         return Page.of(step, pageNumber, pageSize).map(this::toReservation);
+    }
+
+    /** 관리자 예약 목록 검색: 회원명·전화번호·프로그램명·예약상태(+한글 라벨) LIKE. */
+    private Condition adminSearchClause(String keyword) {
+        String kw   = keyword.trim();
+        String like = "%" + kw + "%";
+        Condition c = USER.NAME.like(like)
+            .or(USER.PHONE.like(like))
+            .or(PROGRAMS.NAME.like(like))
+            .or(Condition.raw("reservations.status LIKE ?", like));
+        String nkw = kw.replace(" ", "");
+        for (var e : STATUS_KO.entrySet()) {
+            if (e.getValue().replace(" ", "").contains(nkw)) {
+                c = c.or(Condition.raw("reservations.status = ?", e.getKey()));
+            }
+        }
+        return c;
     }
 
     public Page<Reservation> findByUserId(Long userId, int pageNumber, int pageSize, String keyword) {
@@ -44,7 +72,7 @@ public class ReservationDao {
         }
         SelectStep step = buildBaseSelect()
             .where(where)
-            .orderByDesc(SESSIONS.SESSION_DATE, RESERVATION.RESERVED_AT);
+            .orderByDesc(RESERVATION.RESERVED_AT);   // 최근 예약(생성) 순
         return Page.of(step, pageNumber, pageSize).map(this::toReservation);
     }
 

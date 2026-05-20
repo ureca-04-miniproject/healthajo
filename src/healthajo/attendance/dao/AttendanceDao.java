@@ -28,6 +28,16 @@ public class AttendanceDao {
 
     /** 선택한 날짜의 OPEN 세션 목록을 시작 시각순으로 페이지 조회. */
     public Page<AttendanceSession> findSessionsByDate(LocalDate date, int pageNumber, int pageSize) {
+        return findSessionsByDate(date, pageNumber, pageSize, null);
+    }
+
+    /** 선택한 날짜의 OPEN 세션 목록 — 키워드(프로그램명) 서버 측 검색 지원. */
+    public Page<AttendanceSession> findSessionsByDate(LocalDate date, int pageNumber, int pageSize, String keyword) {
+        Condition where = Condition.raw("sessions.session_date = ?", java.sql.Date.valueOf(date))
+            .and(SESSIONS.STATUS.eq("OPEN"));
+        if (keyword != null && !keyword.isBlank()) {
+            where = where.and(PROGRAMS.NAME.like("%" + keyword.trim() + "%"));
+        }
         SelectStep step = SESSIONS.select(
                 SESSIONS.ID.as("session_id"),
                 PROGRAMS.NAME.as("program_name"),
@@ -39,10 +49,7 @@ public class AttendanceDao {
                 SESSIONS.ATTENDANCE_CLOSED
             )
             .join(PROGRAMS).on(SESSIONS.PROGRAM_ID.eq(PROGRAMS.ID))
-            .where(
-                Condition.raw("sessions.session_date = ?", java.sql.Date.valueOf(date))
-                    .and(SESSIONS.STATUS.eq("OPEN"))
-            )
+            .where(where)
             .orderBy(SESSIONS.START_TIME);
         return Page.of(step, pageNumber, pageSize).map(this::toSession);
     }
@@ -75,7 +82,6 @@ public class AttendanceDao {
         RESERVATION.update()
             .set(RESERVATION.ATTENDANCE_STATUS, "ATTENDED")
             .set(RESERVATION.ATTENDED_AT, LocalDateTime.now())
-            .set(RESERVATION.ATTENDED_BY, "ADMIN")
             .where(RESERVATION.ID.eq(reservationId))
             .execute();
     }
@@ -84,7 +90,6 @@ public class AttendanceDao {
         RESERVATION.update()
             .set(RESERVATION.ATTENDANCE_STATUS, "ABSENT")
             .set(RESERVATION.ATTENDED_AT, (LocalDateTime) null)
-            .set(RESERVATION.ATTENDED_BY, "ADMIN")
             .where(RESERVATION.ID.eq(reservationId))
             .execute();
     }
@@ -93,7 +98,6 @@ public class AttendanceDao {
         RESERVATION.update()
             .set(RESERVATION.ATTENDANCE_STATUS, "PENDING")
             .set(RESERVATION.ATTENDED_AT, (LocalDateTime) null)
-            .set(RESERVATION.ATTENDED_BY, (String) null)
             .where(RESERVATION.ID.eq(reservationId))
             .execute();
     }

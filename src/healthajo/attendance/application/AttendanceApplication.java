@@ -16,6 +16,10 @@ public class AttendanceApplication {
         return dao.findSessionsByDate(date, pageNumber, pageSize);
     }
 
+    public Page<AttendanceSession> findSessionsByDate(LocalDate date, int pageNumber, int pageSize, String keyword) {
+        return dao.findSessionsByDate(date, pageNumber, pageSize, keyword);
+    }
+
     public List<Attendee> findAttendees(Long sessionId) {
         return dao.findAttendees(sessionId);
     }

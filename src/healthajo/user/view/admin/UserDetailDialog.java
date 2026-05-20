@@ -18,6 +18,7 @@ import javax.swing.border.MatteBorder;
 import javax.swing.table.DefaultTableModel;
 import java.util.ArrayList;
 import java.util.List;
+import healthajo.jdbc.core.Page;
 import healthajo.jdbc.core.Record;
 
 /**
@@ -267,6 +268,9 @@ public class UserDetailDialog extends JDialog {
     // ── 예약 이력 탭 ─────────────────────────────────────────────────────────────
 
     private JPanel buildReservationTab() {
+        final int pageSize = 10;
+        final int[] page = {0};
+
         JPanel p = new JPanel(new BorderLayout());
         p.setBackground(AppTheme.BG);
 
@@ -275,26 +279,59 @@ public class UserDetailDialog extends JDialog {
             @Override public boolean isCellEditable(int r, int c) { return false; }
         };
 
-        try {
-            List<Record> reservations = dao.findReservationsByUserId(userId);
-            for (Record r : reservations) {
-                rModel.addRow(new Object[]{
-                        r.get("program_name"),
-                        toDateStr(r.get("session_date")),
-                        r.get("status"),
-                        r.get("attendance_status"),
-                        toDateStr(r.get("reserved_at"))
-                });
-            }
-        } catch (Exception ex) {
-            HDialog.error((JFrame) getOwner(), "예약 이력을 불러오지 못했습니다.");
-        }
-
         HTable rTable = new HTable(rModel);
         rTable.setBadgeRenderer(2);
         rTable.setBadgeRenderer(3);
 
+        // ── 페이저 푸터 ──────────────────────────────────────────────────────────
+        JPanel pager = new JPanel(new FlowLayout(FlowLayout.CENTER, AppTheme.SP_2, AppTheme.SP_2));
+        pager.setBackground(AppTheme.BG);
+        HButton prevBtn = HButton.ghost("◀ 이전", HButton.Size.SM);
+        JLabel pageInfo = new JLabel();
+        HButton nextBtn = HButton.ghost("다음 ▶", HButton.Size.SM);
+        pager.add(prevBtn);
+        pager.add(pageInfo);
+        pager.add(nextBtn);
+
+        Runnable reload = () -> {
+            rModel.setRowCount(0);
+            try {
+                Page<Record> result = dao.findReservationsByUserId(userId, page[0], pageSize);
+                for (Record r : result.getContent()) {
+                    rModel.addRow(new Object[]{
+                            r.get("program_name"),
+                            toDateStr(r.get("session_date")),
+                            r.get("status"),
+                            r.get("attendance_status"),
+                            toDateStr(r.get("reserved_at"))
+                    });
+                }
+                long total      = result.getTotalCount();
+                int  totalPages = result.getTotalPages();
+                pageInfo.setText((page[0] + 1) + " / " + Math.max(1, totalPages) + "  (총 " + total + "건)");
+                prevBtn.setEnabled(page[0] > 0);
+                nextBtn.setEnabled(page[0] < totalPages - 1);
+            } catch (Exception ex) {
+                ex.printStackTrace();
+                HDialog.error((JFrame) getOwner(), "예약 이력을 불러오지 못했습니다.\n" + ex.getMessage());
+            }
+        };
+
+        prevBtn.addActionListener(e -> {
+            if (page[0] > 0) {
+                page[0]--;
+                reload.run();
+            }
+        });
+        nextBtn.addActionListener(e -> {
+            page[0]++;
+            reload.run();
+        });
+
+        reload.run();
+
         p.add(rTable.inScrollPane(), BorderLayout.CENTER);
+        p.add(pager, BorderLayout.SOUTH);
         return p;
     }
 

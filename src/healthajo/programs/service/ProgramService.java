@@ -32,6 +32,7 @@ public class ProgramService {
     private final ScheduleDAO scheduleDAO = new ScheduleDAO();
     private final ScheduleWeekdayDAO weekdayDAO = new ScheduleWeekdayDAO();
     private final SessionDAO sessionDAO = new SessionDAO();
+    private final healthajo.memberships.dao.MembershipDAO membershipDAO = new healthajo.memberships.dao.MembershipDAO();
 
     private static final String[] WEEKDAY_NAMES = {"월", "화", "수", "목", "금", "토", "일"};
     private static final Map<String, Integer> WEEKDAY_KOR_TO_INT = Map.of(
@@ -51,6 +52,10 @@ public class ProgramService {
                 .collect(Collectors.toList());
     }
 
+    public healthajo.jdbc.core.Page<ProgramResponseDTO> getProgramList(int pageNumber, int pageSize, String keyword) {
+        return programDAO.findAll(pageNumber, pageSize, keyword).map(this::toResponseDTO);
+    }
+
     public Record getProgramWithSchedules(int id) {
         return programDAO.findByProgramID(id);
     }
@@ -64,6 +69,12 @@ public class ProgramService {
         return sessionDAO.findListItemsByProgramId(programId).stream()
                 .map(this::toSessionListItemDTO)
                 .toList();
+    }
+
+    // 프로그램 상세 — 세션 탭 목록 조회 (페이지네이션)
+    public healthajo.jdbc.core.Page<SessionListItemDTO> findSessionListByProgramId(long programId, int pageNumber, int pageSize) {
+        return sessionDAO.findListItemsByProgramId(programId, pageNumber, pageSize)
+                .map(this::toSessionListItemDTO);
     }
 
     private SessionListItemDTO toSessionListItemDTO(Record record) {
@@ -113,29 +124,122 @@ public class ProgramService {
         return rows;
     }
 
-    // 스케줄 신규 생성 (program_schedules + schedule_weekdays N건)
+    // 스케줄 신규 생성 (program_schedules + schedule_weekdays N건 + 기간 내 sessions 자동 생성)
     public long createSchedule(long programId, String startDateStr, String endDateStr,
                                int defaultCapacity, List<Object[]> weekdayRows) {
         LocalDate startDate = LocalDate.parse(startDateStr);
         LocalDate endDate   = LocalDate.parse(endDateStr);
         long scheduleId = scheduleDAO.insertSimple(programId, startDate, endDate, defaultCapacity);
         insertWeekdayRows(scheduleId, weekdayRows);
+        generateSessions(programId, scheduleId, startDate, endDate, defaultCapacity, weekdayRows, java.util.Set.of());
         return scheduleId;
     }
 
-    // 스케줄 수정 — weekdays는 전체 삭제 후 재삽입
+    /**
+     * 스케줄의 요일 설정으로부터 start~end 기간의 모든 해당 요일에 세션을 생성한다.
+     * 정원은 요일별 capacity가 있으면 그것을, 없으면 default_capacity를 사용.
+     */
+    private void generateSessions(long programId, long scheduleId,
+                                  LocalDate startDate, LocalDate endDate,
+                                  int defaultCapacity, List<Object[]> weekdayRows,
+                                  java.util.Set<String> skipKeys) {
+        if (weekdayRows == null || startDate == null || endDate == null) return;
+
+        // 요일(0=월~6=일) → 해당 요일의 (시작, 종료, 정원) 목록
+        Map<Integer, List<Object[]>> byWeekday = new HashMap<>();
+        for (Object[] row : weekdayRows) {
+            Integer dayInt = WEEKDAY_KOR_TO_INT.get(row[0] == null ? "" : row[0].toString());
+            if (dayInt == null) continue;
+            Time startTime = parseHourMinute(row[1] == null ? "" : row[1].toString());
+            Time endTime   = parseHourMinute(row[2] == null ? "" : row[2].toString());
+            if (startTime == null || endTime == null) continue;
+            Integer cap = parseIntOrNull(row[3] == null ? "" : row[3].toString());
+            byWeekday.computeIfAbsent(dayInt, k -> new ArrayList<>())
+                     .add(new Object[]{startTime, endTime, cap == null ? defaultCapacity : cap});
+        }
+        if (byWeekday.isEmpty()) return;
+
+        for (LocalDate d = startDate; !d.isAfter(endDate); d = d.plusDays(1)) {
+            int weekdayInt = d.getDayOfWeek().getValue() - 1; // MONDAY(1)~SUNDAY(7) → 0~6
+            List<Object[]> slots = byWeekday.get(weekdayInt);
+            if (slots == null) continue;
+            Date sqlDate = Date.valueOf(d);
+            for (Object[] slot : slots) {
+                Time st = (Time) slot[0];
+                Time en = (Time) slot[1];
+                // 이미 존재하는(예약된) 세션과 중복 생성 방지
+                String key = sqlDate + "|" + st + "|" + en;
+                if (skipKeys.contains(key)) continue;
+                sessionDAO.insert(programId, scheduleId, sqlDate, st, en, (Integer) slot[2]);
+            }
+        }
+    }
+
+    // ── 강사 배정 / 세션 취소 / 예약자 (프로그램 상세) ───────────────────────────
+
+    public List<healthajo.session.domain.Instructor> getActiveInstructors() {
+        List<healthajo.session.domain.Instructor> result = new ArrayList<>();
+        for (Record r : sessionDAO.findActiveInstructors()) {
+            result.add(new healthajo.session.domain.Instructor(r.get(I.ID), r.get(I.NAME)));
+        }
+        return result;
+    }
+
+    public void assignInstructor(long sessionId, long instructorId) {
+        sessionDAO.assignInstructor(sessionId, instructorId);
+    }
+
+    public void cancelSession(long sessionId) {
+        sessionDAO.cancelSessionCascade(sessionId);
+    }
+
+    public List<Record> findReservationsByProgramId(long programId) {
+        return sessionDAO.findReservationsByProgramId(programId);
+    }
+
+    /**
+     * 회원권 일괄 발급 — 프로그램의 CONFIRMED 예약자 각각에게 회원권을 발급하고,
+     * 해당 예약을 MEMBERSHIP_ISSUED로 전환하며 membership_id를 연결한다.
+     * @return 발급된 회원(=예약자) 수
+     */
+    public int bulkIssueMembership(long programId, String programName, int totalCount) {
+        String name = (programName == null ? "프로그램" : programName) + " 수강권";
+        int issued = 0;
+        for (Long userId : sessionDAO.findConfirmedReserverUserIds(programId)) {
+            long membershipId = membershipDAO.insertMembershipReturnId(userId, programId, name, totalCount);
+            sessionDAO.markReservationsMembershipIssued(programId, userId, membershipId);
+            issued++;
+        }
+        return issued;
+    }
+
+    public healthajo.jdbc.core.Page<Record> findReservationsByProgramId(long programId, int pageNumber, int pageSize) {
+        return sessionDAO.findReservationsByProgramId(programId, pageNumber, pageSize);
+    }
+
+    // 스케줄 수정 — weekdays 재삽입 + 세션 재생성(예약된 세션 보존, 예약 없는 건 정리 후 새 기간 반영)
     public void updateSchedule(long scheduleId, String startDateStr, String endDateStr,
                                int defaultCapacity, List<Object[]> weekdayRows) {
         LocalDate startDate = LocalDate.parse(startDateStr);
         LocalDate endDate   = LocalDate.parse(endDateStr);
+        Long programId = scheduleDAO.findById(scheduleId).map(Schedule::getProgramId).orElse(null);
+
         scheduleDAO.updateSimple(scheduleId, startDate, endDate, defaultCapacity);
         weekdayDAO.deleteByScheduleId(scheduleId);
         insertWeekdayRows(scheduleId, weekdayRows);
+
+        if (programId != null) {
+            // 예약 없는 기존 세션 제거 → 예약된 세션과 중복되지 않게 새 기간으로 재생성
+            sessionDAO.deleteReservationFreeByScheduleId(scheduleId);
+            java.util.Set<String> remaining = sessionDAO.findSessionKeysByScheduleId(scheduleId);
+            generateSessions(programId, scheduleId, startDate, endDate, defaultCapacity, weekdayRows, remaining);
+        }
     }
 
-    // 스케줄 삭제 — 연결된 세션이 있으면 false 반환 (UI에서 안내)
+    // 스케줄 삭제 — 예약이 있는 세션이 있으면 false. 예약 없는 세션은 함께 삭제.
     public boolean deleteSchedule(long scheduleId) {
-        if (sessionDAO.countByScheduleId(scheduleId) > 0) return false;
+        if (sessionDAO.countReservationsByScheduleId(scheduleId) > 0) return false;
+        sessionDAO.deleteByScheduleId(scheduleId);   // 예약 없는 세션 일괄 삭제 (FK 안전)
         weekdayDAO.deleteByScheduleId(scheduleId);
         scheduleDAO.delete(scheduleId);
         return true;

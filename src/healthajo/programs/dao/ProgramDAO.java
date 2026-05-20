@@ -1,6 +1,8 @@
 package healthajo.programs.dao;
 
+import healthajo.jdbc.core.Page;
 import healthajo.jdbc.core.Record;
+import healthajo.jdbc.core.SelectStep;
 import healthajo.jdbc.core.WindowFunction;
 import healthajo.jdbc.table.TProgramSchedules;
 import healthajo.jdbc.table.TPrograms;
@@ -55,6 +57,23 @@ public class ProgramDAO {
                 )
                 .orderByDesc(P.CREATED_AT)
                 .fetch();
+    }
+
+    // READ - 프로그램 목록 페이지 조회 (검색: 프로그램명·종목)
+    public Page<Record> findAll(int pageNumber, int pageSize, String keyword) {
+        healthajo.jdbc.core.Condition where = P.DELETED_AT.isNull();
+        if (keyword != null && !keyword.isBlank()) {
+            String like = "%" + keyword.trim() + "%";
+            where = where.and(P.NAME.like(like).or(P.CATEGORY.like(like)));
+        }
+        SelectStep step = P.select(
+                P.ID,
+                P.NAME, P.DESCRIPTION, P.CATEGORY,
+                P.RESERVATION_OPEN_AT, P.RESERVATION_CLOSE_AT,
+                P.CANCELLATION_OPEN_AT, P.CANCELLATION_CLOSE_AT,
+                P.CREATED_AT, P.UPDATED_AT
+        ).where(where).orderByDesc(P.CREATED_AT);
+        return Page.of(step, pageNumber, pageSize);
     }
 
     public Record findByProgramID(int id) {

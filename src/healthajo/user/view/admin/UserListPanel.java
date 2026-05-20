@@ -50,6 +50,7 @@ public class UserListPanel extends BaseListPanel {
     @Override protected String   pageTitle()       { return "사용자 관리"; }
     @Override protected boolean  hasCheckbox()     { return true; }
     @Override protected String   searchPlaceholder() { return "이름 또는 전화번호 검색"; }
+    @Override protected boolean  serverSideSearch() { return true; }
 
     @Override
     protected String[] columnNames() {
@@ -91,7 +92,7 @@ public class UserListPanel extends BaseListPanel {
         model.setRowCount(0);
         idList = new ArrayList<>();
 
-        Page<Record> page = dao.findAllWithStats(currentPage - 1, pageSize);
+        Page<Record> page = dao.findAllWithStats(currentPage - 1, pageSize, searchKeyword);
 
         for (Record r : page.getContent()) {
             idList.add(r.get(T.ID));

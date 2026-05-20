@@ -79,6 +79,15 @@ public class SessionDao {
 
     /** 관리자 세션 목록 (프로그램·강사 조인, 최신순) — 페이지네이션. */
     public Page<AdminSession> findAllForAdmin(int pageNumber, int pageSize) {
+        return findAllForAdmin(pageNumber, pageSize, null, null);
+    }
+
+    public Page<AdminSession> findAllForAdmin(int pageNumber, int pageSize, String keyword) {
+        return findAllForAdmin(pageNumber, pageSize, keyword, null);
+    }
+
+    /** 관리자 세션 목록 — 키워드(프로그램명·날짜·상태) + 선택 날짜 서버 측 필터. date==null 이면 전체 날짜. */
+    public Page<AdminSession> findAllForAdmin(int pageNumber, int pageSize, String keyword, java.time.LocalDate date) {
         SelectStep step = SESSIONS.select(
                 SESSIONS.ID,
                 PROGRAMS.NAME.as("program_name"),
@@ -91,8 +100,22 @@ public class SessionDao {
                 SESSIONS.STATUS
             )
             .join(PROGRAMS).on(SESSIONS.PROGRAM_ID.eq(PROGRAMS.ID))
-            .leftJoin(INSTRUCTORS).on(SESSIONS.INSTRUCTOR_ID.eq(INSTRUCTORS.ID))
-            .orderByDesc(SESSIONS.SESSION_DATE)
+            .leftJoin(INSTRUCTORS).on(SESSIONS.INSTRUCTOR_ID.eq(INSTRUCTORS.ID));
+
+        Condition where = null;
+        if (keyword != null && !keyword.isBlank()) {
+            String like = "%" + keyword.trim() + "%";
+            where = PROGRAMS.NAME.like(like)
+                    .or(Condition.raw("DATE_FORMAT(sessions.session_date, '%Y-%m-%d') LIKE ?", like))
+                    .or(Condition.raw("sessions.status LIKE ?", like));
+        }
+        if (date != null) {
+            Condition dateCond = Condition.raw("sessions.session_date = ?", java.sql.Date.valueOf(date));
+            where = (where == null) ? dateCond : where.and(dateCond);
+        }
+        if (where != null) step = step.where(where);
+
+        step = step.orderByDesc(SESSIONS.SESSION_DATE)
             .orderBy(SESSIONS.START_TIME);
         return Page.of(step, pageNumber, pageSize).map(this::toAdminSession);
     }

@@ -58,6 +58,27 @@ public class MembershipDAO {
                 .execute();
     }
 
+    // 회원권 발급 후 생성된 PK 반환 (일괄 발급에서 예약에 membership_id를 연결하기 위해 사용)
+    public long insertMembershipReturnId(Long userId, Long programId, String name, int totalCount) {
+        if (userId == null)   throw new IllegalArgumentException("회원 ID가 필요합니다.");
+        if (programId == null) throw new IllegalArgumentException("프로그램 ID가 필요합니다.");
+        if (name == null || name.trim().isEmpty()) throw new IllegalArgumentException("회원권명이 필요합니다.");
+        if (totalCount <= 0)  throw new IllegalArgumentException("총 횟수는 1 이상이어야 합니다.");
+
+        Timestamp now = new Timestamp(System.currentTimeMillis());
+        return MEMBERSHIP.insertInto()
+                .set(MEMBERSHIP.USER_ID, userId)
+                .set(MEMBERSHIP.PROGRAM_ID, programId)
+                .set(MEMBERSHIP.NAME, name)
+                .set(MEMBERSHIP.TOTAL_COUNT, totalCount)
+                .set(MEMBERSHIP.REMAINING_COUNT, totalCount)
+                .set(MEMBERSHIP.STATUS, "ACTIVE")
+                .set(MEMBERSHIP.ISSUED_AT, now)
+                .set(MEMBERSHIP.CREATED_AT, now)
+                .set(MEMBERSHIP.UPDATED_AT, now)
+                .executeAndReturnKey();
+    }
+
     public List<Record> findAllMemberships() {
         return MEMBERSHIP.select(
                         MEMBERSHIP.ID,
@@ -76,7 +97,11 @@ public class MembershipDAO {
     }
 
     public List<Record> findAllMembershipsWithUserAndProgram(int limit, int offset) {
-        return MEMBERSHIP.select(
+        return findAllMembershipsWithUserAndProgram(limit, offset, null);
+    }
+
+    public List<Record> findAllMembershipsWithUserAndProgram(int limit, int offset, String keyword) {
+        var step = MEMBERSHIP.select(
                         field(MEMBERSHIP.ID.getQualifiedName() + " AS membership_id"),
                         field(USER.NAME.getQualifiedName() + " AS user_name"),
                         field(PROGRAM.NAME.getQualifiedName() + " AS program_name"),
@@ -87,11 +112,23 @@ public class MembershipDAO {
                         field(MEMBERSHIP.ISSUED_AT.getQualifiedName() + " AS issued_at")
                 )
                 .join(USER).on(MEMBERSHIP.USER_ID.eq(USER.ID))
-                .join(PROGRAM).on(MEMBERSHIP.PROGRAM_ID.eq(PROGRAM.ID))
+                .join(PROGRAM).on(MEMBERSHIP.PROGRAM_ID.eq(PROGRAM.ID));
+        if (keyword != null && !keyword.isBlank()) {
+            step = step.where(searchClause(keyword));
+        }
+        return step
                 .orderByDesc(MEMBERSHIP.ISSUED_AT)
                 .limit(limit)
                 .offset(offset * limit)
                 .fetch();
+    }
+
+    /** 회원명·프로그램명·회원권명 LIKE 검색. (쿼리는 alias 없이 테이블명 사용) */
+    private static Condition searchClause(String keyword) {
+        String like = "%" + keyword.trim() + "%";
+        return Condition.raw(
+                "(users.name LIKE ? OR programs.name LIKE ? OR memberships.name LIKE ?)",
+                like, like, like);
     }
 
     private static Field field(String sql) {
@@ -99,7 +136,18 @@ public class MembershipDAO {
     }
 
     public long countAll() {
-        return MEMBERSHIP.select().fetchCount();
+        return countAll(null);
+    }
+
+    public long countAll(String keyword) {
+        if (keyword == null || keyword.isBlank()) {
+            return MEMBERSHIP.select().fetchCount();
+        }
+        return MEMBERSHIP.select()
+                .join(USER).on(MEMBERSHIP.USER_ID.eq(USER.ID))
+                .join(PROGRAM).on(MEMBERSHIP.PROGRAM_ID.eq(PROGRAM.ID))
+                .where(searchClause(keyword))
+                .fetchCount();
     }
 
     private static final class ProgramRef extends TableBase {

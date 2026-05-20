@@ -41,6 +41,7 @@ public class ReservationPanel extends BaseListPanel {
     @Override protected String   pageTitle()         { return "예약 관리"; }
     @Override protected boolean  hasCheckbox()       { return true; }
     @Override protected String   searchPlaceholder() { return "회원명 또는 프로그램명 검색"; }
+    @Override protected boolean  serverSideSearch()  { return true; }
 
     @Override
     protected String[] columnNames() {
@@ -70,7 +71,7 @@ public class ReservationPanel extends BaseListPanel {
         if (reservations == null) return;  // super() 호출 시점엔 필드 미초기화
         reservations.clear();
         try {
-            Page<Reservation> page = APP.findAll(currentPage - 1, pageSize);
+            Page<Reservation> page = APP.findAll(currentPage - 1, pageSize, searchKeyword);
             for (Reservation r : page.getContent()) {
                 reservations.add(r);
                 model.addRow(toRow(r));
@@ -86,14 +87,7 @@ public class ReservationPanel extends BaseListPanel {
     protected void onRowDoubleClick(int modelRow) {
         if (modelRow >= reservations.size()) return;
         Reservation r = reservations.get(modelRow);
-        HDialog.alert(parentFrame(), "예약 상세",
-            "회원: " + r.userName() + " (" + r.userPhone() + ")\n" +
-            "프로그램: " + r.programName() + "\n" +
-            "세션 날짜: " + fmt(r.sessionDate(), DATE_FMT) + "\n" +
-            "예약 상태: " + r.status() + "\n" +
-            "출석 상태: " + r.attendanceStatus() + "\n" +
-            "예약일: " + fmt(r.reservedAt(), DT_FMT),
-            HDialog.Type.INFO);
+        new ReservationDetailDialog(parentFrame(), r).setVisible(true);
     }
 
     private void onForceCancel() {
