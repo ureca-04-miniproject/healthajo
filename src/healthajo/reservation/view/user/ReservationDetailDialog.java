@@ -4,45 +4,39 @@ import healthajo.component.HBadge;
 import healthajo.component.HButton;
 import healthajo.component.HLabel;
 import healthajo.component.theme.AppTheme;
+import healthajo.reservation.domain.Reservation;
+
 import java.awt.*;
 import java.awt.geom.RoundRectangle2D;
+import java.time.format.DateTimeFormatter;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.MatteBorder;
 
 /**
  * 사용자 — 나의 예약 상세 다이얼로그.
- *
- * <p>data: [프로그램명, 날짜, 시작, 종료, 예약상태, 예약일]
- *
- * <p>MEMBERSHIP_ISSUED 추가 조회:
- *   TODO: SELECT m.name, m.total_count, m.remaining_count, m.issued_at
- *         FROM memberships m
- *         JOIN sessions s ON s.program_id = m.program_id
- *         JOIN reservations r ON r.session_id = s.id AND r.user_id = m.user_id
- *         WHERE r.id = ?
- *
- * <p>CANCELLED 추가 조회:
- *   TODO: SELECT r.cancelled_at, r.cancelled_by FROM reservations r WHERE r.id = ?
  */
 public class ReservationDetailDialog extends JDialog {
 
-    public ReservationDetailDialog(JFrame parent, Object[] data) {
+    private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+    private static final DateTimeFormatter DT_FMT   = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+
+    public ReservationDetailDialog(JFrame parent, Reservation reservation) {
         super(parent, "예약 상세", true);
         setResizable(false);
         setLocationRelativeTo(parent);
         getContentPane().setBackground(AppTheme.SURFACE);
         setLayout(new BorderLayout());
 
-        String program    = data[0].toString();
-        String date       = data[1].toString();
-        String start      = data[2].toString();
-        String end        = data[3].toString();
-        String status     = data[4].toString();
-        String reservedAt = data[5].toString();
+        String program    = reservation.programName() != null ? reservation.programName() : "";
+        String date       = reservation.sessionDate() != null ? reservation.sessionDate().format(DATE_FMT) : "";
+        String start      = reservation.startTime()   != null ? reservation.startTime()  : "";
+        String end        = reservation.endTime()     != null ? reservation.endTime()    : "";
+        String status     = reservation.status()      != null ? reservation.status()     : "";
+        String reservedAt = reservation.reservedAt()  != null ? reservation.reservedAt().format(DT_FMT) : "";
 
         add(buildHeader(program, date, start, end, status), BorderLayout.NORTH);
-        add(buildBody(program, status, date, start, end, reservedAt), BorderLayout.CENTER);
+        add(buildBody(reservation, program, status, date, start, end, reservedAt), BorderLayout.CENTER);
         add(buildFooter(), BorderLayout.SOUTH);
 
         pack();
@@ -91,17 +85,17 @@ public class ReservationDetailDialog extends JDialog {
 
     private static HBadge statusBadge(String status) {
         return switch (status) {
-            case "CONFIRMED"         -> HBadge.of("예약 확정", AppTheme.PRIMARY_TINT,        AppTheme.PRIMARY);
-            case "MEMBERSHIP_ISSUED" -> HBadge.of("회원권 사용", new Color(204, 251, 241),    new Color(13, 148, 136));
-            case "CANCELLED"         -> HBadge.of("취소",      AppTheme.WARNING_DIM,         AppTheme.WARNING);
-            default                  -> HBadge.of(status,     AppTheme.SURFACE_RAISED,       AppTheme.TEXT_MUTED);
+            case "CONFIRMED"         -> HBadge.of("예약 확정",   AppTheme.PRIMARY_TINT,      AppTheme.PRIMARY);
+            case "MEMBERSHIP_ISSUED" -> HBadge.of("회원권 사용", new Color(204, 251, 241),   new Color(13, 148, 136));
+            case "CANCELLED"         -> HBadge.of("취소",        AppTheme.WARNING_DIM,       AppTheme.WARNING);
+            default                  -> HBadge.of(status,        AppTheme.SURFACE_RAISED,    AppTheme.TEXT_MUTED);
         };
     }
 
     // ── 바디 ──────────────────────────────────────────────────────────────────
 
-    private JPanel buildBody(String program, String status, String date,
-                             String start, String end, String reservedAt) {
+    private JPanel buildBody(Reservation reservation, String program, String status,
+                             String date, String start, String end, String reservedAt) {
         JPanel body = new JPanel();
         body.setBackground(AppTheme.SURFACE);
         body.setLayout(new BoxLayout(body, BoxLayout.Y_AXIS));
@@ -113,30 +107,21 @@ public class ReservationDetailDialog extends JDialog {
         JPanel section = switch (status) {
             case "CONFIRMED"         -> buildConfirmedSection(reservedAt);
             case "MEMBERSHIP_ISSUED" -> buildMembershipSection(program, date);
-            case "CANCELLED"         -> buildCancelledSection(reservedAt);
+            case "CANCELLED"         -> buildCancelledSection(reservation, reservedAt);
             default                  -> new JPanel();
         };
         body.add(section);
         return body;
     }
 
-    // ── 세션 카드 (항상 표시) ─────────────────────────────────────────────────
+    // ── 세션 카드 ─────────────────────────────────────────────────────────────
 
     private JPanel buildSessionCard(String date, String start, String end, boolean cancelled) {
         Color accent    = cancelled ? AppTheme.TEXT_DISABLED : AppTheme.PRIMARY;
         Color accentDim = cancelled ? AppTheme.SURFACE_RAISED : AppTheme.PRIMARY_TINT;
         int   duration  = parseDuration(start, end);
 
-        JPanel card = new JPanel() {
-            @Override protected void paintComponent(Graphics g) {
-                Graphics2D g2 = (Graphics2D) g.create();
-                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                g2.setColor(accentDim);
-                g2.fill(new RoundRectangle2D.Float(0, 0, getWidth(), getHeight(), AppTheme.R_LG, AppTheme.R_LG));
-                g2.dispose();
-            }
-        };
-        card.setOpaque(false);
+        JPanel card = roundedPanel(accentDim, AppTheme.R_LG);
         card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
         card.setBorder(new EmptyBorder(AppTheme.SP_5, AppTheme.SP_5, AppTheme.SP_4, AppTheme.SP_5));
         card.setAlignmentX(LEFT_ALIGNMENT);
@@ -181,7 +166,6 @@ public class ReservationDetailDialog extends JDialog {
         grid.setOpaque(false);
         grid.setAlignmentX(LEFT_ALIGNMENT);
         addGridRow(grid, 0, "예약일", reservedAt);
-        // TODO: addGridRow(grid, 1, "담당 강사", instructorName);
         section.add(grid);
         return section;
     }
@@ -189,23 +173,18 @@ public class ReservationDetailDialog extends JDialog {
     // ── MEMBERSHIP_ISSUED 섹션 ────────────────────────────────────────────────
 
     private JPanel buildMembershipSection(String program, String sessionDate) {
-        // MOCK — DB 구현 시 reservation_id 기반 조회로 교체
-        // TODO: SELECT m.name, m.total_count, m.remaining_count, m.issued_at
-        //       FROM memberships m
-        //       JOIN sessions s ON s.program_id = m.program_id
-        //       JOIN reservations r ON r.session_id = s.id AND r.user_id = m.user_id
-        //       WHERE r.id = ?
+        // TODO: 회원권 ID 기반 DB 조회로 교체
         String  memberName;
         int     total, remaining;
         String  issuedAt;
         boolean expired;
 
         if (program.contains("필라테스")) {
-            memberName = "필라테스 중급 수강권"; total = 24; remaining = 0; issuedAt = "2025-02-01"; expired = true;
+            memberName = "필라테스 중급 수강권"; total = 24; remaining = 0;  issuedAt = "2025-02-01"; expired = true;
         } else if (program.contains("요가")) {
             memberName = "요가 기초반 수강권";   total = 20; remaining = 19; issuedAt = "2025-04-01"; expired = false;
         } else {
-            memberName = program + " 수강권";   total = 20; remaining = 10; issuedAt = "2025-03-01"; expired = false;
+            memberName = program + " 수강권";    total = 20; remaining = 10; issuedAt = "2025-03-01"; expired = false;
         }
 
         float ratio     = total > 0 ? (float) remaining / total : 0f;
@@ -231,16 +210,7 @@ public class ReservationDetailDialog extends JDialog {
 
     private JPanel buildMembershipCard(int total, int remaining,
                                        Color accent, Color accentDim, float ratio, boolean expired) {
-        JPanel card = new JPanel() {
-            @Override protected void paintComponent(Graphics g) {
-                Graphics2D g2 = (Graphics2D) g.create();
-                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                g2.setColor(accentDim);
-                g2.fill(new RoundRectangle2D.Float(0, 0, getWidth(), getHeight(), AppTheme.R_LG, AppTheme.R_LG));
-                g2.dispose();
-            }
-        };
-        card.setOpaque(false);
+        JPanel card = roundedPanel(accentDim, AppTheme.R_LG);
         card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
         card.setBorder(new EmptyBorder(AppTheme.SP_6, AppTheme.SP_5, AppTheme.SP_5, AppTheme.SP_5));
         card.setAlignmentX(LEFT_ALIGNMENT);
@@ -249,7 +219,6 @@ public class ReservationDetailDialog extends JDialog {
         sectionLbl.setForeground(expired ? AppTheme.TEXT_MUTED : accent);
         sectionLbl.setAlignmentX(LEFT_ALIGNMENT);
 
-        // 잔여 횟수 행 (큰 숫자 + 총 횟수)
         JPanel countRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
         countRow.setOpaque(false);
         countRow.setAlignmentX(LEFT_ALIGNMENT);
@@ -288,17 +257,24 @@ public class ReservationDetailDialog extends JDialog {
         JPanel grid = new JPanel(new GridBagLayout());
         grid.setOpaque(false);
         grid.setAlignmentX(LEFT_ALIGNMENT);
-
-        addGridRow(grid, 0, "회원권명",    memberName);
-        addGridRow(grid, 1, "총 횟수",     total + "회");
+        addGridRow(grid, 0, "회원권명",      memberName);
+        addGridRow(grid, 1, "총 횟수",       total + "회");
         addGridRow(grid, 2, "이 세션 사용일", lastUsedDate);
-        addGridRow(grid, 3, "발급일",      issuedAt);
+        addGridRow(grid, 3, "발급일",        issuedAt);
         return grid;
     }
 
     // ── CANCELLED 섹션 ────────────────────────────────────────────────────────
 
-    private JPanel buildCancelledSection(String reservedAt) {
+    private JPanel buildCancelledSection(Reservation reservation, String reservedAt) {
+        String cancelledAt = reservation.cancelledAt() != null
+            ? reservation.cancelledAt().format(DT_FMT) : "";
+        String cancelledBy = switch (reservation.cancelledBy() != null ? reservation.cancelledBy() : "") {
+            case "ADMIN" -> "관리자";
+            case "USER"  -> "회원 직접 취소";
+            default      -> "";
+        };
+
         JPanel section = new JPanel();
         section.setOpaque(false);
         section.setLayout(new BoxLayout(section, BoxLayout.Y_AXIS));
@@ -314,8 +290,8 @@ public class ReservationDetailDialog extends JDialog {
         grid.setOpaque(false);
         grid.setAlignmentX(LEFT_ALIGNMENT);
         addGridRow(grid, 0, "원래 예약일", reservedAt);
-        // TODO: addGridRow(grid, 1, "취소일",    cancelledAt);
-        // TODO: addGridRow(grid, 2, "취소 처리", "회원 직접 취소" or "관리자");
+        if (!cancelledAt.isEmpty()) addGridRow(grid, 1, "취소일",    cancelledAt);
+        if (!cancelledBy.isEmpty()) addGridRow(grid, 2, "취소 처리", cancelledBy);
         section.add(grid);
         return section;
     }
@@ -323,16 +299,7 @@ public class ReservationDetailDialog extends JDialog {
     // ── 공통 안내 패널 ────────────────────────────────────────────────────────
 
     private JPanel buildNotice(String title, String desc, Color bg, Color fg) {
-        JPanel outer = new JPanel() {
-            @Override protected void paintComponent(Graphics g) {
-                Graphics2D g2 = (Graphics2D) g.create();
-                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                g2.setColor(bg);
-                g2.fill(new RoundRectangle2D.Float(0, 0, getWidth(), getHeight(), AppTheme.R_SM, AppTheme.R_SM));
-                g2.dispose();
-            }
-        };
-        outer.setOpaque(false);
+        JPanel outer = roundedPanel(bg, AppTheme.R_SM);
         outer.setLayout(new BoxLayout(outer, BoxLayout.Y_AXIS));
         outer.setBorder(new EmptyBorder(AppTheme.SP_5, AppTheme.SP_4, AppTheme.SP_4, AppTheme.SP_4));
         outer.setAlignmentX(LEFT_ALIGNMENT);
@@ -418,6 +385,18 @@ public class ReservationDetailDialog extends JDialog {
     }
 
     // ── 유틸 ──────────────────────────────────────────────────────────────────
+
+    private static JPanel roundedPanel(Color bg, int radius) {
+        return new JPanel() {
+            @Override protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(bg);
+                g2.fill(new RoundRectangle2D.Float(0, 0, getWidth(), getHeight(), radius, radius));
+                g2.dispose();
+            }
+        };
+    }
 
     private static int parseDuration(String start, String end) {
         try {

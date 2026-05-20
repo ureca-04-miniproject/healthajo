@@ -26,6 +26,9 @@ public class DeleteStep {
             throw new IllegalStateException("WHERE 없는 DELETE는 허용하지 않습니다.");
         }
         String sql = buildSql();
+        List<Object> bindings = condition != null ? condition.getBindings() : List.of();
+        System.out.println("[SQL] " + sql);
+        System.out.println("[BIND] " + bindings);
         try (JdbcConnectionFactory.JdbcConnection jc = JdbcConnectionFactory.getInstance().getConnection()) {
             Connection conn = jc.get();
             try (PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -33,6 +36,7 @@ public class DeleteStep {
                 return ps.executeUpdate();
             }
         } catch (SQLException e) {
+            e.printStackTrace();
             throw new RuntimeException("DELETE 실행 실패: " + sql, e);
         }
     }

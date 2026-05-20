@@ -3,34 +3,39 @@ package healthajo.reservation.view.admin;
 import healthajo.component.HButton;
 import healthajo.component.HDialog;
 import healthajo.component.HToast;
-import healthajo.component.theme.AppTheme;
+import healthajo.jdbc.core.Page;
+import healthajo.reservation.application.ReservationApplication;
+import healthajo.reservation.domain.Reservation;
 import healthajo.template.BaseListPanel;
+
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 import javax.swing.*;
 import javax.swing.table.TableColumnModel;
 
 /**
  * 관리자 — 예약 관리 화면.
- *
- * TODO: SELECT u.name, u.phone, p.name AS program_name,
- *              s.session_date, r.status, r.attendance_status,
- *              DATE_FORMAT(r.reserved_at, '%Y-%m-%d')
- *       FROM reservations r
- *       JOIN users u ON u.id = r.user_id
- *       JOIN sessions s ON s.id = r.session_id
- *       JOIN programs p ON p.id = s.program_id
- *       WHERE r.status != 'CANCELLED'
- *       ORDER BY r.reserved_at DESC
  */
 public class ReservationPanel extends BaseListPanel {
+
+    private static final ReservationApplication APP = new ReservationApplication();
+
+    private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+    private static final DateTimeFormatter DT_FMT   = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+
+    private final List<Reservation> reservations = new ArrayList<>();
 
     private HButton cancelBtn;
 
     public ReservationPanel() {
-        super();
+        super();  // loadData() 호출됨 — reservations 필드 초기화 전이므로 null 가드로 조기 리턴
         model.addTableModelListener(e -> {
             if (cancelBtn != null) cancelBtn.setEnabled(getCheckedRows().length > 0);
         });
+        // 필드 초기화 완료 후 실제 데이터 로드
+        model.setRowCount(0);
+        loadData();
     }
 
     @Override protected String   pageTitle()         { return "예약 관리"; }
@@ -52,37 +57,42 @@ public class ReservationPanel extends BaseListPanel {
 
     @Override
     protected void configureColumns(TableColumnModel cm) {
-        int[] widths = {100, 130, 150, 100, 120, 100, 100};
+        int[] widths = {100, 130, 150, 110, 120, 100, 130};
         for (int i = 0; i < widths.length; i++) {
             cm.getColumn(i + 1).setPreferredWidth(widths[i]);
         }
-        table.setBadgeRenderer(5);  // 예약 상태 (offset 포함: 실제 컬럼 5)
-        table.setBadgeRenderer(6);  // 출석 상태
+        table.setBadgeRenderer(5);
+        table.setBadgeRenderer(6);
     }
 
     @Override
     protected void loadData() {
-        // MOCK
-        model.addRow(new Object[]{false, "홍길동", "010-1234-5678", "스피닝 A반",    "2025-05-20", "CONFIRMED",        "PENDING",  "2025-05-01"});
-        model.addRow(new Object[]{false, "김영희", "010-2345-6789", "요가 기초반",   "2025-05-20", "MEMBERSHIP_ISSUED", "ATTENDED", "2025-04-20"});
-        model.addRow(new Object[]{false, "이철수", "010-3456-7890", "스피닝 A반",    "2025-05-22", "CONFIRMED",        "PENDING",  "2025-05-03"});
-        model.addRow(new Object[]{false, "박민준", "010-4567-8901", "골프 입문반",   "2025-05-21", "CONFIRMED",        "PENDING",  "2025-05-05"});
-        model.addRow(new Object[]{false, "최서연", "010-5678-9012", "필라테스 중급", "2025-05-19", "MEMBERSHIP_ISSUED", "ATTENDED", "2025-04-18"});
-        model.addRow(new Object[]{false, "강동원", "010-7890-1234", "요가 기초반",   "2025-05-22", "CONFIRMED",        "PENDING",  "2025-05-06"});
-        setTotalCount(model.getRowCount());
+        if (reservations == null) return;  // super() 호출 시점엔 필드 미초기화
+        reservations.clear();
+        try {
+            Page<Reservation> page = APP.findAll(currentPage - 1, pageSize);
+            for (Reservation r : page.getContent()) {
+                reservations.add(r);
+                model.addRow(toRow(r));
+            }
+            setTotalCount((int) page.getTotalCount());
+        } catch (RuntimeException ex) {
+            HDialog.error(parentFrame(), "예약 목록을 불러오지 못했습니다.\n" + ex.getMessage());
+            setTotalCount(0);
+        }
     }
 
     @Override
     protected void onRowDoubleClick(int modelRow) {
-        // 예약 상세 팝업 (간단 정보 표시)
-        Object[] data = getRowData(modelRow);
+        if (modelRow >= reservations.size()) return;
+        Reservation r = reservations.get(modelRow);
         HDialog.alert(parentFrame(), "예약 상세",
-            "회원: " + data[0] + " (" + data[1] + ")\n" +
-            "프로그램: " + data[2] + "\n" +
-            "세션 날짜: " + data[3] + "\n" +
-            "예약 상태: " + data[4] + "\n" +
-            "출석 상태: " + data[5] + "\n" +
-            "예약일: " + data[6],
+            "회원: " + r.userName() + " (" + r.userPhone() + ")\n" +
+            "프로그램: " + r.programName() + "\n" +
+            "세션 날짜: " + fmt(r.sessionDate(), DATE_FMT) + "\n" +
+            "예약 상태: " + r.status() + "\n" +
+            "출석 상태: " + r.attendanceStatus() + "\n" +
+            "예약일: " + fmt(r.reservedAt(), DT_FMT),
             HDialog.Type.INFO);
     }
 
@@ -101,21 +111,55 @@ public class ReservationPanel extends BaseListPanel {
         }
 
         String names = buildNames(rows);
-        if (HDialog.confirmDanger(parentFrame(), "강제 취소",
+        if (!HDialog.confirmDanger(parentFrame(), "강제 취소",
                 "선택한 " + rows.length + "건의 예약을 강제 취소하시겠습니까?\n" +
-                "대상: " + names + "\n\n강제 취소 시 COUNT 타입 회원권의 잔여 횟수가 복구됩니다.")) {
-
-            // TODO: UPDATE reservations SET status='CANCELLED', cancelled_by='ADMIN', cancelled_at=NOW()
-            //       WHERE id IN (...)
-            //       sessions.booked_count -1
-            //       COUNT 타입: memberships.remaining_count +1 (EXPIRED → ACTIVE)
-            for (int i = rows.length - 1; i >= 0; i--) {
-                model.setValueAt("CANCELLED", rows[i], hasCheckbox() ? 5 : 4);
-                model.setValueAt("ABSENT",    rows[i], hasCheckbox() ? 6 : 5);
-                model.setValueAt(false, rows[i], 0);
-            }
-            HToast.success(parentFrame(), rows.length + "건이 강제 취소되었습니다.");
+                "대상: " + names + "\n\n강제 취소 시 세션 예약 인원이 감소합니다.")) {
+            return;
         }
+
+        int failed = 0;
+        for (int i = rows.length - 1; i >= 0; i--) {
+            int modelRow = rows[i];
+            if (modelRow >= reservations.size()) continue;
+            Reservation r = reservations.get(modelRow);
+            try {
+                APP.cancelByAdmin(r);
+                model.setValueAt("CANCELLED", modelRow, 5);
+                model.setValueAt("ABSENT",    modelRow, 6);
+                model.setValueAt(false,        modelRow, 0);
+            } catch (RuntimeException ex) {
+                failed++;
+            }
+        }
+
+        if (failed == 0) {
+            HToast.success(parentFrame(), rows.length + "건이 강제 취소되었습니다.");
+        } else {
+            HToast.success(parentFrame(), (rows.length - failed) + "건 취소 완료, " + failed + "건 실패.");
+        }
+
+        // 목록 새로고침 — Reservation 상태 동기화
+        model.setRowCount(0);
+        loadData();
+    }
+
+    // ── 유틸 ──────────────────────────────────────────────────────────────────
+
+    private static Object[] toRow(Reservation r) {
+        return new Object[]{
+            false,
+            r.userName(),
+            r.userPhone(),
+            r.programName(),
+            fmt(r.sessionDate(), DATE_FMT),
+            r.status(),
+            r.attendanceStatus(),
+            fmt(r.reservedAt(), DT_FMT)
+        };
+    }
+
+    private static String fmt(java.time.LocalDateTime dt, DateTimeFormatter f) {
+        return dt != null ? dt.format(f) : "";
     }
 
     private String buildNames(int[] rows) {

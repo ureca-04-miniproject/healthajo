@@ -2,32 +2,36 @@ package healthajo.program.view.user;
 
 import healthajo.component.HButton;
 import healthajo.component.HDialog;
+import healthajo.jdbc.core.Page;
+import healthajo.program.application.ProgramApplication;
+import healthajo.program.domain.ProgramSummary;
 import healthajo.template.BaseListPanel;
+
+import java.util.ArrayList;
 import java.util.List;
 import javax.swing.*;
 import javax.swing.table.TableColumnModel;
+
 import static javax.swing.SwingConstants.CENTER;
 
-/**
- * 사용자 — 프로그램 예약 화면.
- *
- * TODO: SELECT p.id, p.name, p.category,
- *              DATE_FORMAT(p.reservation_start,'%Y-%m-%d'), DATE_FORMAT(p.reservation_end,'%Y-%m-%d'),
- *              (SELECT SUM(s.capacity - s.booked_count)
- *               FROM sessions s WHERE s.program_id = p.id AND s.session_date >= CURDATE()
- *               AND s.status = 'OPEN') AS remaining,
- *              p.status
- *       FROM programs p
- *       WHERE p.deleted_at IS NULL AND p.status = 'ACTIVE'
- *       ORDER BY p.name
- */
 public class ProgramListPanel extends BaseListPanel {
 
-    public ProgramListPanel() { super(); }
+    private static final ProgramApplication APP = new ProgramApplication();
 
-    @Override protected String   pageTitle()         { return "프로그램 예약"; }
-    @Override protected boolean  hasCheckbox()       { return false; }
-    @Override protected String   searchPlaceholder() { return "프로그램명 또는 종목 검색"; }
+    private Long userId;
+    private final List<ProgramSummary> programs = new ArrayList<>();
+
+    public ProgramListPanel(Long userId) {
+        super();  // loadData() 조기 리턴 (programs == null)
+        this.userId = userId;
+        model.setRowCount(0);
+        loadData();
+    }
+
+    @Override protected String  pageTitle()         { return "프로그램 예약"; }
+    @Override protected boolean hasCheckbox()       { return false; }
+    @Override protected String  searchPlaceholder() { return "프로그램명 또는 종목 검색"; }
+    @Override protected boolean serverSideSearch()  { return true; }
 
     @Override
     protected String[] columnNames() {
@@ -52,13 +56,22 @@ public class ProgramListPanel extends BaseListPanel {
 
     @Override
     protected void loadData() {
-        // MOCK
-        // TODO: DB 조회 후 교체
-        model.addRow(new Object[]{"스피닝 A반",    "SPINNING", "2025-04-01 ~ 2025-09-30",  "5", "ACTIVE"});
-        model.addRow(new Object[]{"요가 기초반",   "YOGA",     "2025-04-01 ~ 2025-09-30",  "3", "ACTIVE"});
-        model.addRow(new Object[]{"필라테스 중급", "PILATES",  "2025-03-01 ~ 2025-08-31",  "2", "ACTIVE"});
-        model.addRow(new Object[]{"골프 입문반",   "GOLF",     "2025-05-01 ~ 2025-10-31",  "6", "ACTIVE"});
-        setTotalCount(model.getRowCount());
+        if (programs == null) return;  // super() 호출 시점
+        programs.clear();
+        try {
+            Page<ProgramSummary> page = APP.findAll(currentPage - 1, pageSize, searchKeyword);
+            for (ProgramSummary p : page.getContent()) {
+                programs.add(p);
+                model.addRow(new Object[]{
+                    p.name(), p.category(), p.reservationPeriod(),
+                    p.remaining(), "ACTIVE"
+                });
+            }
+            setTotalCount((int) page.getTotalCount());
+        } catch (RuntimeException ex) {
+            HDialog.error(parentFrame(), "프로그램 목록을 불러오지 못했습니다.\n" + ex.getMessage());
+            setTotalCount(0);
+        }
     }
 
     @Override
@@ -76,7 +89,7 @@ public class ProgramListPanel extends BaseListPanel {
     }
 
     private void openReserveDialog(int modelRow) {
-        Object[] data = getRowData(modelRow);
-        new ProgramReserveDialog(parentFrame(), data).setVisible(true);
+        if (modelRow >= programs.size()) return;
+        new ProgramReserveDialog(parentFrame(), userId, programs.get(modelRow)).setVisible(true);
     }
 }
