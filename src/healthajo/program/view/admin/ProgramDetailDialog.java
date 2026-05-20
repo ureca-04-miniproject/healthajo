@@ -7,6 +7,7 @@ import healthajo.component.HTabPanel;
 import healthajo.component.HTable;
 import healthajo.component.HToast;
 import healthajo.component.theme.AppTheme;
+import healthajo.programs.service.ProgramService;
 import healthajo.schedule.view.admin.ScheduleFormDialog;
 import java.awt.*;
 import javax.swing.*;
@@ -25,11 +26,13 @@ import javax.swing.table.DefaultTableModel;
  */
 public class ProgramDetailDialog extends JDialog {
 
+    private ProgramService service;
     private final String programName;
 
-    public ProgramDetailDialog(JFrame parent, Object[] data) {
+    public ProgramDetailDialog(JFrame parent, Object[] data, ProgramService service) {
         super(parent, "프로그램 상세", true);
-        this.programName = data[0].toString();
+        this.service = service;
+        this.programName = data[2].toString();
 
         setLayout(new BorderLayout());
         setSize(720, 600);
@@ -43,8 +46,8 @@ public class ProgramDetailDialog extends JDialog {
         header.setLayout(new BoxLayout(header, BoxLayout.Y_AXIS));
         header.setBorder(new EmptyBorder(AppTheme.SP_4, AppTheme.SP_6, AppTheme.SP_4, AppTheme.SP_6));
 
-        JLabel title = HLabel.h2(data[0].toString());
-        JLabel sub   = HLabel.small("종목: " + data[1] + "  |  예약 기간: " + data[2]);
+        JLabel title = HLabel.h2(data[2].toString());
+        JLabel sub   = HLabel.small("종목: " + data[3] + "  |  예약 기간: " + data[4]);
         title.setAlignmentX(LEFT_ALIGNMENT);
         sub.setAlignmentX(LEFT_ALIGNMENT);
         header.add(title);
@@ -87,12 +90,15 @@ public class ProgramDetailDialog extends JDialog {
         // TODO: SELECT p.*, ps.schedule_type, ps.start_date, ps.end_date, ps.default_capacity
         //       FROM programs p LEFT JOIN program_schedules ps ON ps.program_id = p.id
         //       WHERE p.id = ?
-        addInfo(p, "프로그램명",    data[0].toString());
-        addInfo(p, "종목",          data[1].toString());
-        addInfo(p, "예약 가능 기간", data[2].toString());
-        addInfo(p, "총 정원",       data[3].toString());
-        addInfo(p, "현재 예약 수",  data[4].toString());
-        addInfo(p, "상태",          data[5].toString());
+
+//        service.getProgramWithSchedules(Integer.parseInt(data[0].toString()));
+
+        addInfo(p, "프로그램명",    data[2].toString());
+        addInfo(p, "종목",          data[3].toString());
+        addInfo(p, "예약 가능 기간", data[4].toString());
+        addInfo(p, "총 정원",       data[5].toString());
+        addInfo(p, "현재 예약 수",  data[6].toString());
+        addInfo(p, "상태",          data[7].toString());
 
         JScrollPane sp = new JScrollPane(p);
         sp.setBorder(null);
