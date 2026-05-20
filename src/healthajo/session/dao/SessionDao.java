@@ -2,7 +2,11 @@ package healthajo.session.dao;
 
 import healthajo.jdbc.core.Condition;
 import healthajo.jdbc.core.Field;
+import healthajo.jdbc.core.Page;
 import healthajo.jdbc.core.Record;
+import healthajo.jdbc.core.SelectStep;
+import healthajo.session.domain.AdminSession;
+import healthajo.session.domain.Instructor;
 import healthajo.session.domain.SessionSummary;
 
 import java.time.format.DateTimeFormatter;
@@ -12,6 +16,7 @@ import java.util.List;
 import java.util.Set;
 
 import static healthajo.jdbc.table.TInstructors.INSTRUCTORS;
+import static healthajo.jdbc.table.TPrograms.PROGRAMS;
 import static healthajo.jdbc.table.TReservation.RESERVATION;
 import static healthajo.jdbc.table.TSessions.SESSIONS;
 
@@ -70,7 +75,78 @@ public class SessionDao {
         return slots;
     }
 
+    // ── 관리자 — 세션 관리 ─────────────────────────────────────────────────────
+
+    /** 관리자 세션 목록 (프로그램·강사 조인, 최신순) — 페이지네이션. */
+    public Page<AdminSession> findAllForAdmin(int pageNumber, int pageSize) {
+        SelectStep step = SESSIONS.select(
+                SESSIONS.ID,
+                PROGRAMS.NAME.as("program_name"),
+                SESSIONS.SESSION_DATE,
+                SESSIONS.START_TIME,
+                SESSIONS.END_TIME,
+                SESSIONS.CAPACITY,
+                SESSIONS.BOOKED_COUNT,
+                INSTRUCTORS.NAME.as("instructor_name"),
+                SESSIONS.STATUS
+            )
+            .join(PROGRAMS).on(SESSIONS.PROGRAM_ID.eq(PROGRAMS.ID))
+            .leftJoin(INSTRUCTORS).on(SESSIONS.INSTRUCTOR_ID.eq(INSTRUCTORS.ID))
+            .orderByDesc(SESSIONS.SESSION_DATE)
+            .orderBy(SESSIONS.START_TIME);
+        return Page.of(step, pageNumber, pageSize).map(this::toAdminSession);
+    }
+
+    /** 배정 가능한 ACTIVE 강사 목록. */
+    public List<Instructor> findActiveInstructors() {
+        List<Record> records = INSTRUCTORS.select(INSTRUCTORS.ID, INSTRUCTORS.NAME)
+            .where(
+                INSTRUCTORS.STATUS.eq("ACTIVE")
+                    .and(Condition.raw("instructors.deleted_at IS NULL"))
+            )
+            .orderBy(INSTRUCTORS.NAME)
+            .fetch();
+
+        List<Instructor> result = new ArrayList<>();
+        for (Record r : records) result.add(new Instructor(toLong(r.get("id")), (String) r.get("name")));
+        return result;
+    }
+
+    /** 세션에 강사 배정. */
+    public void assignInstructor(Long sessionId, Long instructorId) {
+        SESSIONS.update()
+            .set(SESSIONS.INSTRUCTOR_ID, instructorId)
+            .where(SESSIONS.ID.eq(sessionId))
+            .execute();
+    }
+
+    /** 세션 취소 (status='CANCELLED'). */
+    public void cancelSession(Long sessionId) {
+        SESSIONS.update()
+            .set(SESSIONS.STATUS, "CANCELLED")
+            .where(SESSIONS.ID.eq(sessionId))
+            .execute();
+    }
+
     // ── 변환 ─────────────────────────────────────────────────────────────────
+
+    private AdminSession toAdminSession(Record r) {
+        Long   id          = toLong(r.get("sessions.id"));
+        String programName = r.get("program_name", String.class);
+        String date        = toDateStr(r.get("sessions.session_date"));
+        String start       = toTimeStr(r.get("sessions.start_time"));
+        String end         = toTimeStr(r.get("sessions.end_time"));
+        int    capacity    = toInt(r.get("sessions.capacity"));
+        int    booked      = toInt(r.get("sessions.booked_count"));
+        Object instrRaw    = r.get("instructor_name");
+        String instructor  = instrRaw instanceof String s ? s : "-";
+        String status      = r.get("sessions.status", String.class);
+        return new AdminSession(id, programName, date, start, end, capacity, booked, instructor, status);
+    }
+
+    private static int toInt(Object val) {
+        return val instanceof Number n ? n.intValue() : 0;
+    }
 
     private SessionSummary toSessionSummary(Record r) {
         Long   id         = toLong(r.get("sessions.id"));

@@ -18,14 +18,17 @@ public class ReservationDao {
 
     private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("HH:mm");
 
-    public long insert(Long userId, Long sessionId, Long programId) {
-        return RESERVATION.insertInto()
+    public long insert(Long userId, Long sessionId, Long programId, Long membershipId, String status) {
+        var step = RESERVATION.insertInto()
             .set(RESERVATION.USER_ID, userId)
             .set(RESERVATION.SESSION_ID, sessionId)
             .set(RESERVATION.PROGRAM_ID, programId)
-            .set(RESERVATION.STATUS, "CONFIRMED")
-            .set(RESERVATION.ATTENDANCE_STATUS, "PENDING")
-            .executeAndReturnKey();
+            .set(RESERVATION.STATUS, status)
+            .set(RESERVATION.ATTENDANCE_STATUS, "PENDING");
+        if (membershipId != null) {
+            step.set(RESERVATION.MEMBERSHIP_ID, membershipId);
+        }
+        return step.executeAndReturnKey();
     }
 
     public Page<Reservation> findAll(int pageNumber, int pageSize) {

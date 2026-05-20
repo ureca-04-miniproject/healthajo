@@ -18,6 +18,7 @@ public class TReservation extends TableBase {
   public final Column<LocalDateTime> CANCELLED_AT       = new Column<>(getPrefix(), "cancelled_at",       LocalDateTime.class);
   public final Column<String>    ATTENDANCE_STATUS  = new Column<>(getPrefix(), "attendance_status",  String.class);
   public final Column<LocalDateTime> ATTENDED_AT        = new Column<>(getPrefix(), "attended_at",        LocalDateTime.class);
+  public final Column<String>    ATTENDED_BY        = new Column<>(getPrefix(), "attended_by",        String.class);
 
   private TReservation() {
     super("reservations");

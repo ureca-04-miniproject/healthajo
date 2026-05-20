@@ -150,6 +150,7 @@ public class MembershipDAO {
 
     public List<Record> findMembershipsWithProgramByUserId(Long userId) {
         return MEMBERSHIP.select(
+                        field(MEMBERSHIP.ID.getQualifiedName()             + " AS membership_id"),
                         field(MEMBERSHIP.NAME.getQualifiedName()           + " AS membership_name"),
                         field(PROGRAM.NAME.getQualifiedName()              + " AS program_name"),
                         field(MEMBERSHIP.TOTAL_COUNT.getQualifiedName()    + " AS total_count"),

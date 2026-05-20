@@ -4,7 +4,11 @@ import healthajo.component.HBadge;
 import healthajo.component.HButton;
 import healthajo.component.HLabel;
 import healthajo.component.theme.AppTheme;
+import healthajo.jdbc.core.Record;
+import healthajo.memberships.dao.MembershipDAO;
 import healthajo.reservation.domain.Reservation;
+
+import static healthajo.jdbc.table.TMembership.MEMBERSHIP;
 
 import java.awt.*;
 import java.awt.geom.RoundRectangle2D;
@@ -20,6 +24,8 @@ public class ReservationDetailDialog extends JDialog {
 
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private static final DateTimeFormatter DT_FMT   = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+
+    private static final MembershipDAO MEMBERSHIP_DAO = new MembershipDAO();
 
     public ReservationDetailDialog(JFrame parent, Reservation reservation) {
         super(parent, "예약 상세", true);
@@ -106,7 +112,7 @@ public class ReservationDetailDialog extends JDialog {
 
         JPanel section = switch (status) {
             case "CONFIRMED"         -> buildConfirmedSection(reservedAt);
-            case "MEMBERSHIP_ISSUED" -> buildMembershipSection(program, date);
+            case "MEMBERSHIP_ISSUED" -> buildMembershipSection(reservation, program, date);
             case "CANCELLED"         -> buildCancelledSection(reservation, reservedAt);
             default                  -> new JPanel();
         };
@@ -172,19 +178,30 @@ public class ReservationDetailDialog extends JDialog {
 
     // ── MEMBERSHIP_ISSUED 섹션 ────────────────────────────────────────────────
 
-    private JPanel buildMembershipSection(String program, String sessionDate) {
-        // TODO: 회원권 ID 기반 DB 조회로 교체
-        String  memberName;
-        int     total, remaining;
-        String  issuedAt;
-        boolean expired;
+    private JPanel buildMembershipSection(Reservation reservation, String program, String sessionDate) {
+        String  memberName = program + " 수강권";
+        int     total = 0, remaining = 0;
+        String  issuedAt = "";
+        boolean expired = false;
 
-        if (program.contains("필라테스")) {
-            memberName = "필라테스 중급 수강권"; total = 24; remaining = 0;  issuedAt = "2025-02-01"; expired = true;
-        } else if (program.contains("요가")) {
-            memberName = "요가 기초반 수강권";   total = 20; remaining = 19; issuedAt = "2025-04-01"; expired = false;
-        } else {
-            memberName = program + " 수강권";    total = 20; remaining = 10; issuedAt = "2025-03-01"; expired = false;
+        Long membershipId = reservation.membershipId();
+        if (membershipId != null) {
+            try {
+                Record m = MEMBERSHIP_DAO.findById(membershipId);
+                if (m != null) {
+                    String nm = m.get(MEMBERSHIP.NAME);
+                    if (nm != null && !nm.isBlank()) memberName = nm;
+                    Integer t = m.get(MEMBERSHIP.TOTAL_COUNT);
+                    Integer r = m.get(MEMBERSHIP.REMAINING_COUNT);
+                    total     = t != null ? t : 0;
+                    remaining = r != null ? r : 0;
+                    expired   = "EXPIRED".equals(m.get(MEMBERSHIP.STATUS));
+                    java.sql.Timestamp ts = m.get(MEMBERSHIP.ISSUED_AT);
+                    issuedAt  = ts != null ? ts.toLocalDateTime().format(DATE_FMT) : "";
+                }
+            } catch (RuntimeException ignore) {
+                // 회원권 조회 실패 시 기본값 유지
+            }
         }
 
         float ratio     = total > 0 ? (float) remaining / total : 0f;

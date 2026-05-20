@@ -1,11 +1,15 @@
 package healthajo.attendance.view.admin;
 
+import healthajo.attendance.application.AttendanceApplication;
+import healthajo.attendance.domain.AttendanceSession;
 import healthajo.component.HButton;
-import healthajo.component.HLabel;
+import healthajo.component.HDialog;
 import healthajo.component.theme.AppTheme;
+import healthajo.jdbc.core.Page;
 import healthajo.template.BaseListPanel;
 import java.awt.*;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import javax.swing.*;
 import javax.swing.table.TableColumnModel;
@@ -16,22 +20,15 @@ import javax.swing.table.TableColumnModel;
  * 오늘 날짜 기준 세션 목록을 표시. ◀ / 오늘 / ▶ 로 날짜 이동.
  * 세션 행 더블클릭 → AttendanceDetailDialog (출석 처리).
  *
- * TODO: SELECT s.id, p.name, s.session_date,
- *              TIME_FORMAT(s.start_time,'%H:%i'), TIME_FORMAT(s.end_time,'%H:%i'),
- *              s.booked_count,
- *              SUM(r.attendance_status='ATTENDED') AS attended,
- *              SUM(r.attendance_status='PENDING')  AS pending,
- *              s.attendance_closed
- *       FROM sessions s
- *       JOIN programs p ON p.id = s.program_id
- *       LEFT JOIN reservations r ON r.session_id = s.id
- *               AND r.status IN ('CONFIRMED','MEMBERSHIP_ISSUED')
- *       WHERE s.session_date = ?
- *         AND s.status = 'OPEN'
- *       GROUP BY s.id
- *       ORDER BY s.start_time
+ * SELECT s.id, p.name, s.session_date, s.start_time, s.end_time,
+ *        s.booked_count, s.capacity, s.attendance_closed
+ *   FROM sessions s JOIN programs p ON p.id = s.program_id
+ *  WHERE s.session_date = ? AND s.status = 'OPEN'
+ *  ORDER BY s.start_time
  */
 public class AttendancePanel extends BaseListPanel {
+
+    private static final AttendanceApplication APP = new AttendanceApplication();
 
     // NOTE: selectedDate and dateLabel are initialized inside toolbarButtons()
     // which is called from super(). This avoids the NPE caused by field initializers
@@ -39,7 +36,14 @@ public class AttendancePanel extends BaseListPanel {
     private LocalDate selectedDate;
     private JLabel    dateLabel;
 
-    public AttendancePanel() { super(); }
+    // 행 인덱스 ↔ 세션 도메인 매핑 (더블클릭 시 세션 ID 전달용)
+    private final List<AttendanceSession> sessions = new ArrayList<>();
+
+    public AttendancePanel() {
+        super(); // loadData() 호출됨 — sessions 필드 초기화 전이므로 null 가드로 조기 리턴
+        // 필드 초기화 완료 후 실제 데이터 로드
+        reloadData();
+    }
 
     @Override protected String   pageTitle()         { return "출석 관리"; }
     @Override protected boolean  hasCheckbox()       { return false; }
@@ -47,7 +51,7 @@ public class AttendancePanel extends BaseListPanel {
 
     @Override
     protected String[] columnNames() {
-        return new String[]{"프로그램명", "날짜", "시작", "종료", "전체", "출석", "미처리", "마감"};
+        return new String[]{"프로그램명", "날짜", "시작", "종료", "예약", "정원", "마감"};
     }
 
     @Override
@@ -68,16 +72,19 @@ public class AttendancePanel extends BaseListPanel {
         prevBtn.addActionListener(e -> {
             selectedDate = selectedDate.minusDays(1);
             dateLabel.setText("기준일: " + selectedDate);
+            currentPage = 1;
             reloadData();
         });
         nextBtn.addActionListener(e -> {
             selectedDate = selectedDate.plusDays(1);
             dateLabel.setText("기준일: " + selectedDate);
+            currentPage = 1;
             reloadData();
         });
         todayBtn.addActionListener(e -> {
             selectedDate = LocalDate.now();
             dateLabel.setText("기준일: " + selectedDate);
+            currentPage = 1;
             reloadData();
         });
 
@@ -86,32 +93,45 @@ public class AttendancePanel extends BaseListPanel {
 
     @Override
     protected void configureColumns(TableColumnModel cm) {
-        int[] widths = {160, 100, 60, 60, 60, 60, 70, 60};
+        int[] widths = {200, 110, 70, 70, 60, 60, 70};
         for (int i = 0; i < widths.length; i++) cm.getColumn(i).setPreferredWidth(widths[i]);
     }
 
     @Override
     protected void loadData() {
+        // selectedDate may be null on first call from super() before toolbarButtons()
+        // has assigned it — guard with today's date. sessions list is field-initialized
+        // before super() returns? No: super() runs first, so guard null here too.
+        if (sessions == null) return;
         model.setRowCount(0);
-        // selectedDate may be null on first call from super() if toolbarButtons()
-        // hasn't been called yet — safe because toolbarButtons() is always called first
-        // in buildHeader() which precedes loadData() in BaseListPanel constructor.
+        sessions.clear();
         LocalDate d = selectedDate != null ? selectedDate : LocalDate.now();
-        String date = d.toString();
-
-        // MOCK
-        // TODO: DB 조회 (selectedDate 파라미터로 WHERE s.session_date = ?)
-        model.addRow(new Object[]{"스피닝 A반",    date, "07:00", "08:00", "15", "12", "3", "미완료"});
-        model.addRow(new Object[]{"요가 기초반",   date, "10:00", "11:00", "12", "10", "2", "미완료"});
-        model.addRow(new Object[]{"필라테스 중급", date, "14:00", "15:00", "10",  "8", "2", "미완료"});
-        model.addRow(new Object[]{"골프 입문반",   date, "09:00", "10:30",  "6",  "4", "2", "미완료"});
-        setTotalCount(model.getRowCount());
+        try {
+            Page<AttendanceSession> page = APP.findSessionsByDate(d, currentPage - 1, pageSize);
+            for (AttendanceSession s : page.getContent()) {
+                sessions.add(s);
+                model.addRow(new Object[]{
+                    s.programName(),
+                    s.sessionDate(),
+                    s.startTime(),
+                    s.endTime(),
+                    String.valueOf(s.bookedCount()),
+                    String.valueOf(s.capacity()),
+                    s.attendanceClosed() ? "마감" : "미완료"
+                });
+            }
+            setTotalCount((int) page.getTotalCount());
+        } catch (RuntimeException ex) {
+            HDialog.error(parentFrame(), "세션 목록을 불러오지 못했습니다.\n" + ex.getMessage());
+            setTotalCount(0);
+        }
     }
 
     @Override
     protected void onRowDoubleClick(int modelRow) {
-        Object[] data = getRowData(modelRow);
-        new AttendanceDetailDialog(parentFrame(), data).setVisible(true);
+        if (modelRow < 0 || modelRow >= sessions.size()) return;
+        AttendanceSession s = sessions.get(modelRow);
+        new AttendanceDetailDialog(parentFrame(), s).setVisible(true);
         reloadData();
     }
 

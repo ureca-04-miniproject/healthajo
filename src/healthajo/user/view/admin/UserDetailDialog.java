@@ -16,6 +16,7 @@ import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.MatteBorder;
 import javax.swing.table.DefaultTableModel;
+import java.util.ArrayList;
 import java.util.List;
 import healthajo.jdbc.core.Record;
 
@@ -35,6 +36,7 @@ public class UserDetailDialog extends JDialog {
     private final UsersDAO dao;
     private final Long      userId;
     private final MembershipService membershipService = new MembershipService();
+    private final List<Long> membershipIds = new ArrayList<>();
 
     // 기본 정보 탭 필드 (수정 모드용)
     private HTextField nameField;
@@ -188,15 +190,11 @@ public class UserDetailDialog extends JDialog {
             @Override public boolean isCellEditable(int r, int c) { return false; }
         };
 
-        // MOCK: 회원권 목록
-        // TODO: SELECT m.name, p.name, m.total_count, m.remaining_count, m.status,
-        //              DATE_FORMAT(m.issued_at, '%Y-%m-%d')
-        //       FROM memberships m
-        //       JOIN programs p ON p.id = m.program_id
-        //       WHERE m.user_id = ?
-        //       ORDER BY m.issued_at DESC
+        membershipIds.clear();
         List<Record> memberships = membershipService.getMembershipsWithProgramByUserId(userId);
         for (Record r : memberships) {
+            Object idVal = r.get("membership_id");
+            membershipIds.add(idVal instanceof Number n ? n.longValue() : null);
             Object issuedAt = r.get("issued_at");
             String issuedStr = issuedAt == null ? "" : issuedAt.toString();
             if (issuedStr.length() >= 10) issuedStr = issuedStr.substring(0, 10);
@@ -232,8 +230,13 @@ public class UserDetailDialog extends JDialog {
             return;
         }
         int modelRow = mTable.convertRowIndexToModel(row);
-        String membership = (String) mModel.getValueAt(modelRow, 0);
-        int remaining = Integer.parseInt((String) mModel.getValueAt(modelRow, 3));
+        Long membershipId = modelRow < membershipIds.size() ? membershipIds.get(modelRow) : null;
+        if (membershipId == null) {
+            HDialog.error((JFrame) getOwner(), "회원권 정보를 확인할 수 없습니다.");
+            return;
+        }
+        String membership = String.valueOf(mModel.getValueAt(modelRow, 0));
+        int remaining = Integer.parseInt(String.valueOf(mModel.getValueAt(modelRow, 3)));
 
         String input = JOptionPane.showInputDialog(this,
             "[" + membership + "]\n현재 잔여 횟수: " + remaining +
@@ -244,19 +247,19 @@ public class UserDetailDialog extends JDialog {
             try {
                 int delta    = Integer.parseInt(input.trim());
                 int newCount = Math.max(0, remaining + delta);
-                // MOCK: 테이블 직접 변경
-                // TODO: UPDATE memberships SET remaining_count = remaining_count + ?
-                //       WHERE id = ?
-                //       remaining_count > 0 AND status='EXPIRED' → status='ACTIVE'
-                //       remaining_count = 0 → status='EXPIRED'
-
-                // membership 기능 개발되면 추후 반영
-
+                int applied  = newCount - remaining;  // 0 미만으로는 차감하지 않도록 보정
+                if (applied == 0) {
+                    HDialog.info((JFrame) getOwner(), "변경할 횟수가 없습니다.");
+                    return;
+                }
+                membershipService.adjustCount(membershipId, applied);
                 mModel.setValueAt(String.valueOf(newCount), modelRow, 3);
                 mModel.setValueAt(newCount > 0 ? "ACTIVE" : "EXPIRED", modelRow, 4);
                 HToast.success((JFrame) getOwner(), "횟수가 수정되었습니다.");
             } catch (NumberFormatException ex) {
                 HDialog.error((JFrame) getOwner(), "유효한 숫자를 입력하세요.");
+            } catch (RuntimeException ex) {
+                HDialog.error((JFrame) getOwner(), "횟수 수정에 실패했습니다.\n" + ex.getMessage());
             }
         }
     }
@@ -272,20 +275,20 @@ public class UserDetailDialog extends JDialog {
             @Override public boolean isCellEditable(int r, int c) { return false; }
         };
 
-        // MOCK: 예약 이력
-        // TODO: SELECT p.name, s.session_date, r.status, r.attendance_status,
-        //              DATE_FORMAT(r.reserved_at, '%Y-%m-%d')
-        //       FROM reservations r
-        //       JOIN sessions s ON s.id = r.session_id
-        //       JOIN programs p ON p.id = s.program_id
-        //       WHERE r.user_id = ?
-        //       ORDER BY r.reserved_at DESC
-
-        // reservations 기능 개발되면 추후 반영
-
-        rModel.addRow(new Object[]{"스피닝 A반",    "2025-05-20", "CONFIRMED",        "PENDING",  "2025-05-01"});
-        rModel.addRow(new Object[]{"요가 기초반",   "2025-05-15", "MEMBERSHIP_ISSUED", "ATTENDED", "2025-04-20"});
-        rModel.addRow(new Object[]{"필라테스 중급", "2025-03-10", "CANCELLED",        "ABSENT",   "2025-03-01"});
+        try {
+            List<Record> reservations = dao.findReservationsByUserId(userId);
+            for (Record r : reservations) {
+                rModel.addRow(new Object[]{
+                        r.get("program_name"),
+                        toDateStr(r.get("session_date")),
+                        r.get("status"),
+                        r.get("attendance_status"),
+                        toDateStr(r.get("reserved_at"))
+                });
+            }
+        } catch (Exception ex) {
+            HDialog.error((JFrame) getOwner(), "예약 이력을 불러오지 못했습니다.");
+        }
 
         HTable rTable = new HTable(rModel);
         rTable.setBadgeRenderer(2);
@@ -296,6 +299,13 @@ public class UserDetailDialog extends JDialog {
     }
 
     // ── 헬퍼 ─────────────────────────────────────────────────────────────────────
+
+    /** java.sql.Date/Timestamp/LocalDate/LocalDateTime 등을 'yyyy-MM-dd' 문자열로 변환. */
+    private static String toDateStr(Object val) {
+        if (val == null) return "";
+        String s = val.toString();
+        return s.length() >= 10 ? s.substring(0, 10) : s;
+    }
 
     private static void addRow(JPanel p, String label, JComponent field) {
         JLabel lbl = HLabel.label(label);
