@@ -33,9 +33,20 @@ public abstract class TableBase implements FromSource {
     @Override
     public List<Object> getBindings() { return List.of(); }
 
-    // 기본 구현 — 서브클래스에서 covariant return type으로 오버라이드
-    public FromSource as(String alias) {
+    /**
+     * 별칭을 붙인 테이블 반환. 반환 타입이 {@code TableBase}이므로 {@code asterisk()} 등
+     * 모든 TableBase 기능을 캐스트 없이 사용 가능.
+     * 구체 테이블 클래스는 covariant return으로 오버라이드해 타입 컬럼 접근을 제공한다.
+     */
+    public TableBase as(String alias) {
+        if (alias == null || !alias.matches("[a-zA-Z_][a-zA-Z0-9_]*"))
+            throw new IllegalArgumentException("유효하지 않은 SQL 식별자: " + alias);
         return new AliasedTable(tableName, alias);
+    }
+
+    /** {@code prefix.*} Field 반환 — JOIN SELECT 절에서 명시적 애스터리스크 지정 시 사용 */
+    public TableWildcard asterisk() {
+        return new TableWildcard(getPrefix());
     }
 
     public SelectStep select(Field... fields) {

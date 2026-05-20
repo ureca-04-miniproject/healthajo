@@ -17,6 +17,8 @@ class JoinClause {
         this.on = on;
     }
 
+    String getSourcePrefix() { return joinSource.getPrefix(); }
+
     String toSql() {
         String keyword = switch (type) {
             case LEFT  -> "LEFT JOIN";
