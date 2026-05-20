@@ -29,6 +29,8 @@ public final class TUser extends TableBase {
 
     @Override
     public TUser as(String alias) {
+        if (alias == null || !alias.matches("[a-zA-Z_][a-zA-Z0-9_]*"))
+            throw new IllegalArgumentException("유효하지 않은 SQL 식별자: " + alias);
         return new TUser(alias);
     }
 }

@@ -8,20 +8,41 @@ public class Column<T> implements Field {
     private final String tableName;
     private final String name;
     private final Class<T> type;
+    private final String alias;
 
     public Column(String tableName, String name, Class<T> type) {
+        this(tableName, name, type, null);
+    }
+
+    private Column(String tableName, String name, Class<T> type, String alias) {
         this.tableName = tableName;
         this.name = name;
         this.type = type;
+        this.alias = alias;
     }
 
     public String getTableName() { return tableName; }
     public String getName() { return name; }
     public Class<T> getType() { return type; }
+    public String getAlias() { return alias; }
     public String getQualifiedName() { return tableName + "." + name; }
 
+    /**
+     * 이 컬럼에 SQL AS 별칭을 붙인 새 Column을 반환 — 원본은 변경되지 않음.
+     * alias는 SQL 식별자이므로 PreparedStatement 바인딩이 불가 — 개발자가 리터럴로만 사용해야 함.
+     * 잘못된 문자([a-zA-Z_][a-zA-Z0-9_]* 위반) 포함 시 IllegalArgumentException.
+     */
+    public Column<T> as(String alias) {
+        if (alias == null || !alias.matches("[a-zA-Z_][a-zA-Z0-9_]*"))
+            throw new IllegalArgumentException("유효하지 않은 SQL 식별자: " + alias);
+        return new Column<>(tableName, name, type, alias);
+    }
+
     @Override
-    public String toSqlWithAlias() { return getQualifiedName(); }
+    public String toSqlWithAlias() {
+        String qualified = getQualifiedName();
+        return alias != null ? qualified + " AS " + alias : qualified;
+    }
 
     // 값 비교
     public Condition eq(T value) { return Condition.binary(this, "=", value); }
