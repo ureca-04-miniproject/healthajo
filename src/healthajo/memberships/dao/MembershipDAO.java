@@ -142,6 +142,21 @@ public class MembershipDAO {
                 .fetch();
     }
 
+    public List<Record> findMembershipsWithProgramByUserId(Long userId) {
+        return MEMBERSHIP.select(
+                        field(MEMBERSHIP.NAME.getQualifiedName()           + " AS membership_name"),
+                        field(PROGRAM.NAME.getQualifiedName()              + " AS program_name"),
+                        field(MEMBERSHIP.TOTAL_COUNT.getQualifiedName()    + " AS total_count"),
+                        field(MEMBERSHIP.REMAINING_COUNT.getQualifiedName()+ " AS remaining_count"),
+                        field(MEMBERSHIP.STATUS.getQualifiedName()         + " AS status"),
+                        field(MEMBERSHIP.ISSUED_AT.getQualifiedName()      + " AS issued_at")
+                )
+                .join(PROGRAM).on(MEMBERSHIP.PROGRAM_ID.eq(PROGRAM.ID))
+                .where(MEMBERSHIP.USER_ID.eq(userId))
+                .orderByDesc(MEMBERSHIP.ISSUED_AT)
+                .fetch();
+    }
+
     public Record findActiveByUserAndProgram(Long userId, Long programId) {
         List<Record> memberships = findMembershipsByUserId(userId);
 
