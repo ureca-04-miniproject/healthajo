@@ -78,8 +78,10 @@ public class MembershipAdminPanel extends BaseListPanel {
     @Override
     protected void loadData() {
         ids().clear();
+        long totalCount = 0;
         try {
-            List<Record> memberships = MEMBERSHIP_SERVICE.getAllMembershipsWithUserAndProgram();
+            List<Record> memberships = MEMBERSHIP_SERVICE.getAllMembershipsWithUserAndProgram(pageSize, currentPage - 1);
+            totalCount = MEMBERSHIP_SERVICE.countAllMemberships();
             for (Record record : memberships) {
                 Long membershipId = firstLong(record, "membership_id", "id", "memberships.id");
                 ids().add(membershipId);
@@ -96,7 +98,7 @@ public class MembershipAdminPanel extends BaseListPanel {
         } catch (RuntimeException ex) {
             HDialog.error(parentFrame(), "회원권 목록을 불러오지 못했습니다.\n" + ex.getMessage());
         }
-        setTotalCount(model.getRowCount());
+        setTotalCount((int) totalCount);
     }
 
     @Override

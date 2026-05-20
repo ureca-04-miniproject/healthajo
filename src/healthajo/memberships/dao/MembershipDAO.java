@@ -75,7 +75,7 @@ public class MembershipDAO {
                 .fetch();
     }
 
-    public List<Record> findAllMembershipsWithUserAndProgram() {
+    public List<Record> findAllMembershipsWithUserAndProgram(int limit, int offset) {
         return MEMBERSHIP.select(
                         field(MEMBERSHIP.ID.getQualifiedName() + " AS membership_id"),
                         field(USER.NAME.getQualifiedName() + " AS user_name"),
@@ -89,11 +89,17 @@ public class MembershipDAO {
                 .join(USER).on(MEMBERSHIP.USER_ID.eq(USER.ID))
                 .join(PROGRAM).on(MEMBERSHIP.PROGRAM_ID.eq(PROGRAM.ID))
                 .orderByDesc(MEMBERSHIP.ISSUED_AT)
+                .limit(limit)
+                .offset(offset * limit)
                 .fetch();
     }
 
     private static Field field(String sql) {
         return () -> sql;
+    }
+
+    public long countAll() {
+        return MEMBERSHIP.select().fetchCount();
     }
 
     private static final class ProgramRef extends TableBase {

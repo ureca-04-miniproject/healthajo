@@ -5,6 +5,7 @@ import healthajo.component.HDialog;
 import healthajo.component.HTable;
 import healthajo.component.HToast;
 import healthajo.component.theme.AppTheme;
+import healthajo.jdbc.core.Page;
 import healthajo.template.BaseListPanel;
 
 import java.util.Comparator;
@@ -89,8 +90,10 @@ public class UserListPanel extends BaseListPanel {
         if (dao == null) dao = new UsersDAO();
         model.setRowCount(0);
         idList = new ArrayList<>();
-        List<Record> list = dao.findAllWithStats();
-        for (Record r : list) {
+
+        Page<Record> page = dao.findAllWithStats(currentPage - 1, pageSize);
+
+        for (Record r : page.getContent()) {
             idList.add(r.get(T.ID));
             model.addRow(new Object[]{
                     false,
@@ -101,12 +104,18 @@ public class UserListPanel extends BaseListPanel {
                     r.get("created_at") == null ? "" : r.get("created_at").toString().substring(0, 10)
             });
         }
-        setTotalCount(model.getRowCount());
+        setTotalCount((int) page.getTotalCount());
     }
 
     @Override
     protected void onRowDoubleClick(int modelRow) {
-        Object[] data = getRowData(modelRow);
+        Object[] data = new Object[]{
+                model.getValueAt(modelRow, 1),
+                model.getValueAt(modelRow, 2),
+                model.getValueAt(modelRow, 3),
+                model.getValueAt(modelRow, 4),
+                model.getValueAt(modelRow, 5)
+        };
         // TODO: 상세 다이얼로그 닫힌 후 변경 사항 있으면 해당 행 갱신
         Long userId = idList.get(modelRow);
         new UserDetailDialog(parentFrame(), data, modelRow, dao, userId).setVisible(true);
@@ -131,7 +140,13 @@ public class UserListPanel extends BaseListPanel {
             return;
         }
         int modelRow = table.convertRowIndexToModel(viewRow);
-        Object[] data = getRowData(modelRow);
+        Object[] data = new Object[]{
+                model.getValueAt(modelRow, 1), // 이름
+                model.getValueAt(modelRow, 2), // 전화번호
+                model.getValueAt(modelRow, 3), // 이메일
+                model.getValueAt(modelRow, 4), // 보유 회원권 수
+                model.getValueAt(modelRow, 5)  // 등록일
+        };
         Long userId = idList.get(modelRow);
         new UserDetailDialog(parentFrame(), data, modelRow, dao, userId).setVisible(true);
         loadData();

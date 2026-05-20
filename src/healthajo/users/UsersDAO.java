@@ -1,5 +1,6 @@
 package healthajo.users;
 
+import healthajo.jdbc.core.Page;
 import healthajo.jdbc.table.TUser;
 import healthajo.jdbc.core.Record;
 import java.sql.Timestamp;
@@ -17,19 +18,22 @@ public class UsersDAO {
                 .fetch();
     }
 
-    public List<Record> findAllWithStats() {
-        return T.select(
-                T.ID,
-                T.NAME,
-                T.PHONE,
-                T.EMAIL,
-                T.CREATED_AT,
-                field("(SELECT COALESCE(SUM(m.remaining_count), 0) " +
-                        "FROM memberships m WHERE m.user_id = users.id) AS membership_count")
-        )
-        .where(T.DELETED_AT.isNull())
-        .orderBy(T.ID)
-        .fetch();
+    public Page<Record> findAllWithStats(int pageNumber, int pageSize) {
+        return Page.of(
+                T.select(
+                                T.ID,
+                                T.NAME,
+                                T.PHONE,
+                                T.EMAIL,
+                                T.CREATED_AT,
+                                field("(SELECT COALESCE(SUM(m.remaining_count), 0) " +
+                                        "FROM memberships m WHERE m.user_id = users.id) AS membership_count")
+                        )
+                        .where(T.DELETED_AT.isNull())
+                        .orderBy(T.ID),
+                pageNumber,
+                pageSize
+        );
     }
     private static Field field(String sql) {
         return () -> sql;

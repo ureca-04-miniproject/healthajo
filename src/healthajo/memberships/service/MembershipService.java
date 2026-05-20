@@ -35,8 +35,12 @@ public class MembershipService {
         return membershipDAO.findAllMemberships();
     }
 
-    public List<Record> getAllMembershipsWithUserAndProgram() {
-        return membershipDAO.findAllMembershipsWithUserAndProgram();
+    public List<Record> getAllMembershipsWithUserAndProgram(int limit, int offset) {
+        return membershipDAO.findAllMembershipsWithUserAndProgram(limit, offset);
+    }
+
+    public long countAllMemberships() {
+        return membershipDAO.countAll();
     }
 
     public List<Record> getMembershipsByUserId(Long userId) {

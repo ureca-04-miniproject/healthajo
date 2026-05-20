@@ -39,6 +39,10 @@ public class UpdateStep {
             throw new IllegalStateException("WHERE 없는 UPDATE는 허용하지 않습니다.");
         }
         String sql = buildSql();
+        List<Object> allBindings = new ArrayList<>(values);
+        if (condition != null) allBindings.addAll(condition.getBindings());
+        System.out.println("[SQL] " + sql);
+        System.out.println("[BIND] " + allBindings);
         try (JdbcConnectionFactory.JdbcConnection jc = JdbcConnectionFactory.getInstance().getConnection()) {
             Connection conn = jc.get();
             try (PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -46,6 +50,7 @@ public class UpdateStep {
                 return ps.executeUpdate();
             }
         } catch (SQLException e) {
+            e.printStackTrace();
             throw new RuntimeException("UPDATE 실행 실패: " + sql, e);
         }
     }

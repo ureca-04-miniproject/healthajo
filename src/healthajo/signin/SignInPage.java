@@ -271,7 +271,7 @@ public class SignInPage extends BaseFrame {
         if (result.role() == AuthResult.Role.ADMIN) {
             new AdminMainPanel();
         } else {
-            new UserMainPanel();
+            new UserMainPanel(result.userId());
         }
     }
 

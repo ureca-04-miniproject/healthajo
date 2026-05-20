@@ -101,14 +101,17 @@ public class SelectStep {
             sb.append(" ORDER BY ").append(String.join(", ", orderByClauses));
         sb.append(" LIMIT ").append(limit).append(" OFFSET ").append(rawOffset);
 
+        List<Object> bindings = collectAllBindings();
+        logSql(sb.toString(), bindings);
         try (JdbcConnectionFactory.JdbcConnection jc = JdbcConnectionFactory.getInstance().getConnection()) {
             Connection conn = jc.get();
             try (PreparedStatement ps = conn.prepareStatement(sb.toString())) {
                 int idx = 1;
-                for (Object binding : collectAllBindings()) ps.setObject(idx++, binding);
+                for (Object binding : bindings) ps.setObject(idx++, binding);
                 try (ResultSet rs = ps.executeQuery()) { return mapResults(rs); }
             }
         } catch (SQLException e) {
+            e.printStackTrace();
             throw new RuntimeException("SELECT 실행 실패: " + sb, e);
         }
     }
@@ -118,11 +121,13 @@ public class SelectStep {
     // ── 실행 ──────────────────────────────────────────────────────────
     public List<Record> fetch() {
         String sql = buildSql();
+        List<Object> bindings = collectAllBindings();
+        logSql(sql, bindings);
         try (JdbcConnectionFactory.JdbcConnection jc = JdbcConnectionFactory.getInstance().getConnection()) {
             Connection conn = jc.get();
             try (PreparedStatement ps = conn.prepareStatement(sql)) {
                 int idx = 1;
-                for (Object binding : collectAllBindings()) {
+                for (Object binding : bindings) {
                     ps.setObject(idx++, binding);
                 }
                 try (ResultSet rs = ps.executeQuery()) {
@@ -130,6 +135,7 @@ public class SelectStep {
                 }
             }
         } catch (SQLException e) {
+            e.printStackTrace();
             throw new RuntimeException("SELECT 실행 실패: " + sql, e);
         }
     }
@@ -152,11 +158,13 @@ public class SelectStep {
      */
     public long fetchCount() {
         String sql = "SELECT COUNT(*) FROM (" + buildCoreSql() + ") AS _count_wrap";
+        List<Object> bindings = collectAllBindings();
+        logSql(sql, bindings);
         try (JdbcConnectionFactory.JdbcConnection jc = JdbcConnectionFactory.getInstance().getConnection()) {
             Connection conn = jc.get();
             try (PreparedStatement ps = conn.prepareStatement(sql)) {
                 int idx = 1;
-                for (Object binding : collectAllBindings()) {
+                for (Object binding : bindings) {
                     ps.setObject(idx++, binding);
                 }
                 try (ResultSet rs = ps.executeQuery()) {
@@ -164,6 +172,7 @@ public class SelectStep {
                 }
             }
         } catch (SQLException e) {
+            e.printStackTrace();
             throw new RuntimeException("COUNT 실행 실패: " + sql, e);
         }
     }
@@ -230,6 +239,11 @@ public class SelectStep {
             }
         }
         return sb.toString();
+    }
+
+    private static void logSql(String sql, List<Object> bindings) {
+        System.out.println("[SQL] " + sql);
+        if (!bindings.isEmpty()) System.out.println("[BIND] " + bindings);
     }
 
     private List<Record> mapResults(ResultSet rs) throws SQLException {
