@@ -5,6 +5,8 @@ import healthajo.component.HFormGroup;
 import healthajo.component.HLabel;
 import healthajo.component.HTextField;
 import healthajo.component.theme.AppTheme;
+import healthajo.users.UsersDAO;
+
 import java.awt.*;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -21,11 +23,13 @@ public class UserFormDialog extends JDialog {
     private final HTextField phoneField;
     private final HTextField emailField;
     private final JLabel     errLabel;
+    private final UsersDAO dao;
 
     private boolean saved = false;
 
-    public UserFormDialog(JFrame parent, Object[] editData) {
+    public UserFormDialog(JFrame parent, Object[] editData, UsersDAO dao) {
         super(parent, editData == null ? "사용자 등록" : "사용자 수정", true);
+        this.dao = dao;
         setLayout(new BorderLayout());
         setResizable(false);
         setSize(440, 360);
@@ -97,6 +101,7 @@ public class UserFormDialog extends JDialog {
     private void onConfirm() {
         String name  = nameField.getText().trim();
         String phone = phoneField.getText().trim();
+        String email = emailField.getText().trim();
 
         if (name.isEmpty()) {
             showError("이름을 입력하세요.");
@@ -114,6 +119,7 @@ public class UserFormDialog extends JDialog {
         // TODO: INSERT INTO users (name, phone, email, created_at)
         //       VALUES (?, ?, ?, NOW())
         //       중복 전화번호 → showError("이미 등록된 전화번호입니다.")
+        dao.insert(name, phone, email.isEmpty() ? null : email, "USER");
         saved = true;
         dispose();
     }
