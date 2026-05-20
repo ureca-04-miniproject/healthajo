@@ -2,13 +2,14 @@ package healthajo.programs.dao;
 
 import healthajo.jdbc.core.Field;
 import healthajo.jdbc.core.Record;
+import healthajo.jdbc.core.WindowFunction;
 import healthajo.jdbc.table.TProgramSchedules;
 import healthajo.jdbc.table.TScheduleWeekdays;
 import healthajo.programs.entity.Schedule;
 
+import java.sql.Date;
 import java.sql.Timestamp;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
+import java.time.*;
 import java.util.*;
 
 public class ScheduleDAO {
@@ -58,6 +59,8 @@ public class ScheduleDAO {
     }
 
     public List<Record> findListItemsByProgramId(long programId) {
+        // 일반 집계 함수 COUNT — GROUP BY와 함께 사용하기 위해 익명 Field 람다.
+        // (WindowFunction.count(...).over()는 OVER ()가 강제로 붙어 윈도우 함수가 되므로 그룹별 집계가 안 됨)
         Field weekdayCount = () ->
                 "COUNT(" + SW.ID.getQualifiedName() + ") AS weekday_count";
 
@@ -71,6 +74,33 @@ public class ScheduleDAO {
                 .groupBy(PS.ID)
                 .orderByDesc(PS.CREATED_AT)
                 .fetch();
+    }
+
+    // 신규 생성 — 폼 입력 값으로 직접 받음. LocalDate → java.sql.Date 변환은 DAO 내부에서 처리.
+    public long insertSimple(long programId, LocalDate startDate, LocalDate endDate, int defaultCapacity) {
+        return PS.insertInto()
+                .set(PS.PROGRAM_ID,       programId)
+                .set(PS.START_DATE,       Date.valueOf(startDate))
+                .set(PS.END_DATE,         Date.valueOf(endDate))
+                .set(PS.DEFAULT_CAPACITY, defaultCapacity)
+                .executeAndReturnKey();
+    }
+
+    // 수정 — 폼 입력 값으로 직접 받음.
+    public int updateSimple(long scheduleId, LocalDate startDate, LocalDate endDate, int defaultCapacity) {
+        return PS.update()
+                .set(PS.START_DATE,       Date.valueOf(startDate))
+                .set(PS.END_DATE,         Date.valueOf(endDate))
+                .set(PS.DEFAULT_CAPACITY, defaultCapacity)
+                .where(PS.ID.eq(scheduleId))
+                .execute();
+    }
+
+    // 하드 삭제 — schedule_weekdays는 호출자가 먼저 삭제해야 함
+    public int delete(long scheduleId) {
+        return PS.delete()
+                .where(PS.ID.eq(scheduleId))
+                .execute();
     }
 
     public List<Schedule> findAll() {

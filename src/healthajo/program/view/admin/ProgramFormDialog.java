@@ -8,6 +8,8 @@ import healthajo.component.HLabel;
 import healthajo.component.HTextField;
 import healthajo.component.theme.AppTheme;
 import java.awt.*;
+import java.util.ArrayList;
+import java.util.List;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.MatteBorder;
@@ -413,6 +415,46 @@ public class ProgramFormDialog extends JDialog {
 
     public boolean  isSaved()   { return saved; }
     public String[] getValues() { return values; }
+
+    // ── 외부에서 입력값을 조회하기 위한 getter들 ─────────────────────────────────
+    public String getName()           { return nameField.getText().trim(); }
+    public String getCategory()       { return (String) categoryBox.getSelectedItem(); }
+    public String getDescription()    { return descField.getText().trim(); }
+    public String getResStart()       { return resStartPicker.getText(); }
+    public String getResEnd()         { return resEndPicker.getText(); }
+    public String getCancelDeadline() { return cancelDeadlinePicker.getText(); }
+    public String getOpStart()        { return opStartPicker.getText(); }
+    public String getOpEnd()          { return opEndPicker.getText(); }
+    public String getCapacity()       { return capacityField.getText().trim(); }
+
+    /**
+     * Step 2의 weekday 입력값을 추출.
+     * 각 행: [weekday("월"~"일"), startTime("HH:mm"), endTime("HH:mm"), capacity(빈 문자열)].
+     * capacity는 행별로 입력받지 않으므로 빈 값(기본 정원 상속).
+     */
+    @SuppressWarnings("unchecked")
+    public List<Object[]> getWeekdayRows() {
+        List<Object[]> rows = new ArrayList<>();
+        if (weekdayPanel == null) return rows;
+        for (Component c : weekdayPanel.getComponents()) {
+            if (!(c instanceof JPanel row)) continue;
+            Component[] comps = row.getComponents();
+            // 행 구성: [0] dayBox, [1] startLbl, [2] startTime panel, [3] endLbl, [4] endTime panel, [5] removeBtn
+            if (comps.length < 5) continue;
+            String day      = (String) ((JComboBox<String>) comps[0]).getSelectedItem();
+            String startStr = readTime((JPanel) comps[2]);
+            String endStr   = readTime((JPanel) comps[4]);
+            rows.add(new Object[]{day, startStr, endStr, ""});
+        }
+        return rows;
+    }
+
+    // time picker panel: [hourSpinner, colonLabel, minuteSpinner]
+    private static String readTime(JPanel timePanel) {
+        int h = (Integer) ((JSpinner) timePanel.getComponent(0)).getValue();
+        int m = (Integer) ((JSpinner) timePanel.getComponent(2)).getValue();
+        return String.format("%02d:%02d", h, m);
+    }
 
     // ── 공통 헬퍼 ────────────────────────────────────────────────────────────────
 

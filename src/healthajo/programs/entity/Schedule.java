@@ -1,13 +1,14 @@
 package healthajo.programs.entity;
 
-import java.time.LocalDateTime;
-import java.time.LocalTime;
+import java.sql.Date;
+import java.sql.Timestamp;
+import java.time.*;
 
 public final class Schedule {
     private final Long id;
     private final Long programId;
-    private final LocalDateTime startDate;
-    private final LocalDateTime endDate;
+    private final Date startDate;
+    private final Date endDate;
     private final Integer defaultCapacity;
     private final LocalTime slotOpenTime;
     private final LocalTime slotCloseTime;
@@ -16,7 +17,7 @@ public final class Schedule {
     private final LocalDateTime updatedAt;
 
     public Schedule(Long id, Long programId,
-                    LocalDateTime startDate, LocalDateTime endDate,
+                    Date startDate, Date endDate,
                     Integer defaultCapacity, LocalTime slotOpenTime, LocalTime slotCloseTime,
                     Integer slotDurationTime, LocalDateTime createdAt, LocalDateTime updatedAt) {
         this.id = id;
@@ -33,8 +34,8 @@ public final class Schedule {
 
     public Long getId()                                  { return id; }
     public Long getProgramId()                           { return programId; }
-    public LocalDateTime getStartDate()                  { return startDate; }
-    public LocalDateTime getEndDate()                    { return endDate; }
+    public Date getStartDate()                  { return startDate; }
+    public Date getEndDate()                    { return endDate; }
     public Integer getDefaultCapacity()                  { return defaultCapacity; }
     public LocalTime getSlotOpenTime()               { return slotOpenTime; }
     public LocalTime getSlotCloseTime()              { return slotCloseTime; }
