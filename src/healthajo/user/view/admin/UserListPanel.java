@@ -106,7 +106,13 @@ public class UserListPanel extends BaseListPanel {
 
     @Override
     protected void onRowDoubleClick(int modelRow) {
-        Object[] data = getRowData(modelRow);
+        Object[] data = new Object[]{
+                model.getValueAt(modelRow, 1),
+                model.getValueAt(modelRow, 2),
+                model.getValueAt(modelRow, 3),
+                model.getValueAt(modelRow, 4),
+                model.getValueAt(modelRow, 5)
+        };
         // TODO: 상세 다이얼로그 닫힌 후 변경 사항 있으면 해당 행 갱신
         Long userId = idList.get(modelRow);
         new UserDetailDialog(parentFrame(), data, modelRow, dao, userId).setVisible(true);
@@ -131,7 +137,13 @@ public class UserListPanel extends BaseListPanel {
             return;
         }
         int modelRow = table.convertRowIndexToModel(viewRow);
-        Object[] data = getRowData(modelRow);
+        Object[] data = new Object[]{
+                model.getValueAt(modelRow, 1), // 이름
+                model.getValueAt(modelRow, 2), // 전화번호
+                model.getValueAt(modelRow, 3), // 이메일
+                model.getValueAt(modelRow, 4), // 보유 회원권 수
+                model.getValueAt(modelRow, 5)  // 등록일
+        };
         Long userId = idList.get(modelRow);
         new UserDetailDialog(parentFrame(), data, modelRow, dao, userId).setVisible(true);
         loadData();
