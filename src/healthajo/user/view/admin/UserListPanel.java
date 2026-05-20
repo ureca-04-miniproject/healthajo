@@ -6,9 +6,12 @@ import healthajo.component.HTable;
 import healthajo.component.HToast;
 import healthajo.component.theme.AppTheme;
 import healthajo.template.BaseListPanel;
+
+import java.util.Comparator;
 import java.util.List;
 import javax.swing.*;
 import javax.swing.table.TableColumnModel;
+import javax.swing.table.TableRowSorter;
 
 import healthajo.jdbc.core.Record;
 import healthajo.jdbc.table.TUser;
@@ -80,6 +83,9 @@ public class UserListPanel extends BaseListPanel {
     @Override
     protected void loadData() {
         // TODO: DB 조회 후 model.addRow(...) 교체
+        if (table.getRowSorter() instanceof TableRowSorter<?> sorter) {
+            sorter.setComparator(4, Comparator.comparingInt(o -> Integer.parseInt(o.toString())));
+        }
         if (dao == null) dao = new UsersDAO();
         model.setRowCount(0);
         idList = new ArrayList<>();
@@ -91,7 +97,7 @@ public class UserListPanel extends BaseListPanel {
                     r.get(T.NAME),
                     r.get(T.PHONE),
                     r.get(T.EMAIL) == null ? "" : r.get(T.EMAIL),
-                    r.get("membership_count"),
+                    r.get("membership_count") == null ? "0" : r.get("membership_count").toString(),
                     r.get("created_at") == null ? "" : r.get("created_at").toString().substring(0, 10)
             });
         }
