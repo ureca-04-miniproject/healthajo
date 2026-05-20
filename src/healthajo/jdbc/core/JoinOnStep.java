@@ -4,16 +4,16 @@ public class JoinOnStep {
 
     private final SelectStep selectStep;
     private final JoinClause.Type joinType;
-    private final String joinTable;
+    private final FromSource joinSource;
 
-    JoinOnStep(SelectStep selectStep, JoinClause.Type joinType, String joinTable) {
+    JoinOnStep(SelectStep selectStep, JoinClause.Type joinType, FromSource joinSource) {
         this.selectStep = selectStep;
         this.joinType = joinType;
-        this.joinTable = joinTable;
+        this.joinSource = joinSource;
     }
 
     public SelectStep on(Condition condition) {
-        selectStep.addJoin(new JoinClause(joinType, joinTable, condition));
+        selectStep.addJoin(new JoinClause(joinType, joinSource, condition));
         return selectStep;
     }
 }
