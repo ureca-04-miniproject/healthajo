@@ -32,6 +32,8 @@ public class InsertStep {
             throw new IllegalStateException("INSERT할 컬럼이 하나도 지정되지 않았습니다.");
         }
         String sql = buildSql();
+        System.out.println("[SQL] " + sql);
+        System.out.println("[BIND] " + values);
         try (JdbcConnectionFactory.JdbcConnection jc = JdbcConnectionFactory.getInstance().getConnection()) {
             Connection conn = jc.get();
             try (PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -39,6 +41,7 @@ public class InsertStep {
                 return ps.executeUpdate();
             }
         } catch (SQLException e) {
+            e.printStackTrace();
             throw new RuntimeException("INSERT 실행 실패: " + sql, e);
         }
     }
@@ -48,6 +51,8 @@ public class InsertStep {
             throw new IllegalStateException("INSERT할 컬럼이 하나도 지정되지 않았습니다.");
         }
         String sql = buildSql();
+        System.out.println("[SQL] " + sql);
+        System.out.println("[BIND] " + values);
         try (JdbcConnectionFactory.JdbcConnection jc = JdbcConnectionFactory.getInstance().getConnection()) {
             Connection conn = jc.get();
             try (PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
@@ -59,6 +64,7 @@ public class InsertStep {
                 }
             }
         } catch (SQLException e) {
+            e.printStackTrace();
             throw new RuntimeException("INSERT 실행 실패: " + sql, e);
         }
     }

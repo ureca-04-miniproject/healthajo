@@ -17,7 +17,7 @@ import javax.swing.*;
  */
 public class UserMainPanel extends JFrame {
 
-    public UserMainPanel() {
+    public UserMainPanel(Long userId) {
         setTitle("건강하조");
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         setMinimumSize(new Dimension(1024, 680));
@@ -31,10 +31,10 @@ public class UserMainPanel extends JFrame {
         JPanel     content = new JPanel(cards);
         content.setBackground(AppTheme.BG);
 
-        content.add(new ProgramListPanel(),   "programs");
-        content.add(new MyReservationPanel(), "reservations");
-        content.add(new MyMembershipPanel(),  "memberships");
-        content.add(new MyAttendancePanel(),  "attendance");
+        content.add(new ProgramListPanel(userId),    "programs");
+        content.add(new MyReservationPanel(userId),  "reservations");
+        content.add(new MyMembershipPanel(userId),   "memberships");
+        content.add(new MyAttendancePanel(userId),   "attendance");
 
         HSidebar sidebar = new HSidebar("회원");
         sidebar.addMenu("프로그램 예약", () -> cards.show(content, "programs"));

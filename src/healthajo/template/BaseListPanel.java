@@ -33,9 +33,12 @@ public abstract class BaseListPanel extends JPanel {
     private TableRowSorter<DefaultTableModel> rowSorter;
 
     // ── Pagination state ────────────────────────────────────────────────────
-    protected int currentPage = 1;
-    protected int pageSize    = 20;
-    private   int totalCount  = 0;
+    protected int    currentPage   = 1;
+    protected int    pageSize      = 20;
+    private   int    totalCount    = 0;
+    protected String searchKeyword = "";
+
+    private Timer searchDebounce;
 
     private JLabel  pageInfoLabel;
     private HButton prevPageBtn;
@@ -89,11 +92,13 @@ public abstract class BaseListPanel extends JPanel {
         toolbar.setOpaque(false);
 
         searchField = new HTextField(searchPlaceholder());
-        searchField.setPreferredSize(new Dimension(200, 36));
-        searchField.setMaximumSize(new Dimension(200, 36));
+        searchField.setPreferredSize(new Dimension(220, 36));
+        searchField.setMaximumSize(new Dimension(220, 36));
+        // 기본 세로 패딩(SP_3)이 36px 높이에선 글자를 잘라 SP_2로 축소
+        searchField.setBorder(new EmptyBorder(AppTheme.SP_2, AppTheme.SP_4, AppTheme.SP_2, AppTheme.SP_4));
         searchField.getDocument().addDocumentListener(new DocumentListener() {
-            public void insertUpdate(DocumentEvent e)  { applySearch(); }
-            public void removeUpdate(DocumentEvent e)  { applySearch(); }
+            public void insertUpdate(DocumentEvent e)  { scheduleSearch(); }
+            public void removeUpdate(DocumentEvent e)  { scheduleSearch(); }
             public void changedUpdate(DocumentEvent e) {}
         });
         toolbar.add(searchField);
@@ -234,12 +239,32 @@ public abstract class BaseListPanel extends JPanel {
         loadData();
     }
 
-    private void applySearch() {
+    private void scheduleSearch() {
+        if (!serverSideSearch()) { applyClientSearch(); return; }
+        if (searchDebounce == null) {
+            searchDebounce = new Timer(300, e -> applyServerSearch());
+            searchDebounce.setRepeats(false);
+        }
+        searchDebounce.restart();
+    }
+
+    private void applyClientSearch() {
         String kw = searchField.getText().trim();
         rowSorter.setRowFilter(
             kw.isEmpty() ? null
                 : RowFilter.regexFilter("(?i)" + java.util.regex.Pattern.quote(kw)));
     }
+
+    private void applyServerSearch() {
+        String kw = searchField.getText().trim();
+        if (kw.equals(searchKeyword)) return;
+        searchKeyword = kw;
+        currentPage   = 1;
+        reloadPage();
+    }
+
+    /** 서버 측 검색 사용 여부. true면 searchKeyword를 loadData()에서 쿼리에 반영해야 한다. */
+    protected boolean serverSideSearch() { return false; }
 
     // ── Model ────────────────────────────────────────────────────────────────
 
