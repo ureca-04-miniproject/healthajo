@@ -70,34 +70,41 @@ public class HButton extends JButton {
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,      RenderingHints.VALUE_ANTIALIAS_ON);
         g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
 
-        boolean hov = getModel().isRollover();
-        boolean prs = getModel().isPressed();
+        boolean enabled = isEnabled();
+        boolean hov = enabled && getModel().isRollover();
+        boolean prs = enabled && getModel().isPressed();
 
         Color textColor;
         switch (variant) {
             case PRIMARY -> {
-                Color base = prs ? AppTheme.PRIMARY_PRESS : hov ? AppTheme.PRIMARY_HOVER : AppTheme.PRIMARY;
+                Color base = !enabled     ? new Color(196, 197, 241)
+                           : prs          ? AppTheme.PRIMARY_PRESS
+                           : hov          ? AppTheme.PRIMARY_HOVER
+                           :                AppTheme.PRIMARY;
                 g2.setColor(base);
                 g2.fill(new RoundRectangle2D.Float(0, 0, getWidth(), getHeight(), AppTheme.R_MD, AppTheme.R_MD));
-                textColor = Color.WHITE;
+                textColor = enabled ? Color.WHITE : AppTheme.TEXT_DISABLED;
             }
             case SECONDARY -> {
-                g2.setColor(hov ? AppTheme.SURFACE_RAISED : AppTheme.SURFACE);
+                g2.setColor(!enabled ? AppTheme.SURFACE_RAISED : hov ? AppTheme.SURFACE_RAISED : AppTheme.SURFACE);
                 g2.fill(new RoundRectangle2D.Float(0, 0, getWidth(), getHeight(), AppTheme.R_MD, AppTheme.R_MD));
-                g2.setColor(AppTheme.BORDER);
+                g2.setColor(!enabled ? AppTheme.BORDER_SUBTLE : AppTheme.BORDER);
                 g2.setStroke(new BasicStroke(1f));
                 g2.draw(new RoundRectangle2D.Float(0.5f, 0.5f, getWidth() - 1, getHeight() - 1, AppTheme.R_MD, AppTheme.R_MD));
-                textColor = AppTheme.TEXT;
+                textColor = enabled ? AppTheme.TEXT : AppTheme.TEXT_DISABLED;
             }
             case GHOST -> {
                 if (hov || prs) {
                     g2.setColor(new Color(0, 0, 0, prs ? 10 : 6));
                     g2.fill(new RoundRectangle2D.Float(0, 0, getWidth(), getHeight(), AppTheme.R_MD, AppTheme.R_MD));
                 }
-                textColor = AppTheme.TEXT_SECONDARY;
+                textColor = enabled ? AppTheme.TEXT_SECONDARY : AppTheme.TEXT_DISABLED;
             }
             case DANGER -> {
-                Color base = prs ? new Color(200, 50, 50) : hov ? new Color(235, 65, 65) : AppTheme.DANGER;
+                Color base = !enabled ? new Color(245, 180, 180)
+                           : prs      ? new Color(200, 50, 50)
+                           : hov      ? new Color(235, 65, 65)
+                           :            AppTheme.DANGER;
                 g2.setColor(base);
                 g2.fill(new RoundRectangle2D.Float(0, 0, getWidth(), getHeight(), AppTheme.R_MD, AppTheme.R_MD));
                 textColor = Color.WHITE;

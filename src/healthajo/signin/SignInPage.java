@@ -1,6 +1,7 @@
 package healthajo.signin;
 
 import healthajo.AdminMainPanel;
+import healthajo.UserMainPanel;
 import healthajo.auth.AuthResult;
 import healthajo.auth.AuthService;
 import healthajo.component.HBadge;
@@ -270,7 +271,7 @@ public class SignInPage extends BaseFrame {
         if (result.role() == AuthResult.Role.ADMIN) {
             new AdminMainPanel();
         } else {
-            // TODO 사용자 메인 프레임 열기 (UserMainFrame)
+            new UserMainPanel();
         }
     }
 
