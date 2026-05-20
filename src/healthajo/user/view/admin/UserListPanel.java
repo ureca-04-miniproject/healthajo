@@ -79,19 +79,11 @@ public class UserListPanel extends BaseListPanel {
 
     @Override
     protected void loadData() {
-        // MOCK: 개발용 목 데이터
         // TODO: DB 조회 후 model.addRow(...) 교체
-//        model.addRow(new Object[]{false, "홍길동", "010-1234-5678", "hong@example.com", "2", "2025-01-15"});
-//        model.addRow(new Object[]{false, "김영희", "010-2345-6789", "kim@example.com",  "1", "2025-02-01"});
-//        model.addRow(new Object[]{false, "이철수", "010-3456-7890", "",                 "1", "2025-02-10"});
-//        model.addRow(new Object[]{false, "박민준", "010-4567-8901", "park@example.com", "1", "2025-03-05"});
-//        model.addRow(new Object[]{false, "최서연", "010-5678-9012", "choi@example.com", "0", "2025-03-20"});
-//        model.addRow(new Object[]{false, "강동원", "010-7890-1234", "kang@example.com", "1", "2025-04-01"});
-//        setTotalCount(model.getRowCount());
         if (dao == null) dao = new UsersDAO();
         model.setRowCount(0);
         idList = new ArrayList<>();
-        List<Record> list = dao.findAll();
+        List<Record> list = dao.findAllWithStats();
         for (Record r : list) {
             idList.add(r.get(T.ID));
             model.addRow(new Object[]{
@@ -99,8 +91,8 @@ public class UserListPanel extends BaseListPanel {
                     r.get(T.NAME),
                     r.get(T.PHONE),
                     r.get(T.EMAIL) == null ? "" : r.get(T.EMAIL),
-                    "0",
-                    r.get("T.CREATED_AT") == null ? "" : r.get("T.CREATED_AT").toString().substring(0, 10)
+                    r.get("membership_count"),
+                    r.get("created_at") == null ? "" : r.get("created_at").toString().substring(0, 10)
             });
         }
         setTotalCount(model.getRowCount());

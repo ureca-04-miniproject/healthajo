@@ -47,6 +47,10 @@ public class MembershipService {
         return membershipDAO.findMembershipsByUserId(userId);
     }
 
+    public List<Record> getMembershipsWithProgramByUserId(Long userId) {
+        return membershipDAO.findMembershipsWithProgramByUserId(userId);
+    }
+
     public Record getUsableMembership(Long userId, Long programId) {
         if (userId == null || programId == null) {
             throw new IllegalArgumentException("회원 ID와 프로그램 ID가 필요합니다.");
