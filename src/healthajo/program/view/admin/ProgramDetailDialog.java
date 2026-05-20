@@ -7,13 +7,20 @@ import healthajo.component.HTabPanel;
 import healthajo.component.HTable;
 import healthajo.component.HToast;
 import healthajo.component.theme.AppTheme;
+import healthajo.jdbc.core.Record;
+import healthajo.programs.dto.ProgramResponseDTO;
+import healthajo.programs.dto.ScheduleListItemDTO;
+import healthajo.programs.dto.SessionListItemDTO;
 import healthajo.programs.service.ProgramService;
 import healthajo.schedule.view.admin.ScheduleFormDialog;
 import java.awt.*;
+import java.util.List;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.MatteBorder;
 import javax.swing.table.DefaultTableModel;
+
+
 
 /**
  * 프로그램 상세 다이얼로그.
@@ -28,10 +35,13 @@ public class ProgramDetailDialog extends JDialog {
 
     private ProgramService service;
     private final String programName;
+    private final Long programId;
 
     public ProgramDetailDialog(JFrame parent, Object[] data, ProgramService service) {
         super(parent, "프로그램 상세", true);
         this.service = service;
+        // data: [0]=checkbox, [1]=programId, [2]=name, [3]=type, [4]=reservationTime, [5]=총정원, [6]=예약수, [7]=상태
+        this.programId = Long.parseLong(data[1].toString());
         this.programName = data[2].toString();
 
         setLayout(new BorderLayout());
@@ -120,13 +130,25 @@ public class ProgramDetailDialog extends JDialog {
             @Override public boolean isCellEditable(int r, int c) { return false; }
         };
 
-        // MOCK
-        // TODO: SELECT schedule_type, DATE_FORMAT(start_date,'%Y-%m-%d'),
-        //              DATE_FORMAT(end_date,'%Y-%m-%d'), default_capacity,
-        //              COUNT(sw.id) FROM program_schedules ps
-        //       LEFT JOIN schedule_weekdays sw ON sw.schedule_id = ps.id
-        //       WHERE ps.program_id = ? GROUP BY ps.id
-        m.addRow(new Object[]{"FIXED_WEEKLY", "2025-01-01", "2025-12-31", "20", "3"});
+        // 행 인덱스 ↔ schedule_id 매핑 (CRUD 시 PK 조회용)
+        final java.util.List<Long> scheduleIds = new java.util.ArrayList<>();
+
+        // 목록 새로고침 (생성/수정/삭제 후 재호출)
+        Runnable reload = () -> {
+            m.setRowCount(0);
+            scheduleIds.clear();
+            for (ScheduleListItemDTO dto : service.findListItemsByProgramId(programId)) {
+                scheduleIds.add(dto.getId());
+                m.addRow(new Object[]{
+                        "FIXED_WEEKLY",
+                        dto.getClassStartDate(),
+                        dto.getClassEndDate(),
+                        dto.getCapacity(),
+                        dto.getWeekdayCount()
+                });
+            }
+        };
+        reload.run();
 
         HTable sTable = new HTable(m);
         sTable.setBadgeRenderer(0);
@@ -146,11 +168,18 @@ public class ProgramDetailDialog extends JDialog {
         addBtn.addActionListener(e -> {
             ScheduleFormDialog dlg = new ScheduleFormDialog(parent, null, programName);
             dlg.setVisible(true);
-            if (dlg.isSaved()) {
+            if (!dlg.isSaved()) return;
+            try {
                 Object[] vals = dlg.getValues();
-                // vals[0] = programName, skip; insert remaining cols
-                m.addRow(new Object[]{vals[1], vals[2], vals[3], vals[4], vals[5]});
+                // vals = [programName, "FIXED_WEEKLY", startDate, endDate, capacity, weekdayCount]
+                int cap = Integer.parseInt(vals[4].toString());
+                service.createSchedule(programId,
+                        vals[2].toString(), vals[3].toString(),
+                        cap, dlg.getWeekdayRows());
+                reload.run();
                 HToast.success(parent, "스케줄이 추가되었습니다.");
+            } catch (Exception ex) {
+                HDialog.error(parent, "스케줄 추가 실패: " + ex.getMessage());
             }
         });
 
@@ -158,18 +187,27 @@ public class ProgramDetailDialog extends JDialog {
             int viewRow = sTable.getSelectedRow();
             if (viewRow < 0) { HDialog.info(parent, "편집할 스케줄을 선택하세요."); return; }
             int mr = sTable.convertRowIndexToModel(viewRow);
-            // Build data array matching ScheduleFormDialog format (index 0 = program)
+            long scheduleId = scheduleIds.get(mr);
+
             Object[] rowData = new Object[]{
                 programName,
                 m.getValueAt(mr, 0), m.getValueAt(mr, 1),
                 m.getValueAt(mr, 2), m.getValueAt(mr, 3), m.getValueAt(mr, 4)
             };
-            ScheduleFormDialog dlg = new ScheduleFormDialog(parent, rowData, programName);
+            java.util.List<Object[]> weekdayRows = service.getWeekdayRowsByScheduleId(scheduleId);
+            ScheduleFormDialog dlg = new ScheduleFormDialog(parent, rowData, programName, weekdayRows);
             dlg.setVisible(true);
-            if (dlg.isSaved()) {
+            if (!dlg.isSaved()) return;
+            try {
                 Object[] vals = dlg.getValues();
-                for (int i = 0; i < 5; i++) m.setValueAt(vals[i + 1], mr, i);
+                int cap = Integer.parseInt(vals[4].toString());
+                service.updateSchedule(scheduleId,
+                        vals[2].toString(), vals[3].toString(),
+                        cap, dlg.getWeekdayRows());
+                reload.run();
                 HToast.success(parent, "스케줄이 수정되었습니다.");
+            } catch (Exception ex) {
+                HDialog.error(parent, "스케줄 수정 실패: " + ex.getMessage());
             }
         });
 
@@ -177,13 +215,25 @@ public class ProgramDetailDialog extends JDialog {
             int viewRow = sTable.getSelectedRow();
             if (viewRow < 0) { HDialog.info(parent, "삭제할 스케줄을 선택하세요."); return; }
             int mr   = sTable.convertRowIndexToModel(viewRow);
-            String type = (String) m.getValueAt(mr, 0);
-            if (HDialog.confirmDanger(parent, "스케줄 삭제",
+            long scheduleId = scheduleIds.get(mr);
+            String type = String.valueOf(m.getValueAt(mr, 0));
+
+            if (!HDialog.confirmDanger(parent, "스케줄 삭제",
                     "[" + programName + " / " + type + "] 스케줄을 삭제하시겠습니까?\n" +
-                    "향후 예정된 세션도 함께 삭제됩니다.")) {
-                // TODO: DELETE FROM program_schedules WHERE id = ?
-                m.removeRow(mr);
-                HToast.success(parent, "스케줄이 삭제되었습니다.");
+                    "요일별 설정도 함께 삭제됩니다.")) return;
+
+            try {
+                boolean deleted = service.deleteSchedule(scheduleId);
+                if (deleted) {
+                    reload.run();
+                    HToast.success(parent, "스케줄이 삭제되었습니다.");
+                } else {
+                    HDialog.alert(parent, "삭제 불가",
+                            "해당 스케줄로 생성된 세션이 있어 삭제할 수 없습니다.\n세션을 먼저 정리하세요.",
+                            HDialog.Type.WARNING);
+                }
+            } catch (Exception ex) {
+                HDialog.error(parent, "스케줄 삭제 실패: " + ex.getMessage());
             }
         });
 
@@ -206,15 +256,18 @@ public class ProgramDetailDialog extends JDialog {
             @Override public boolean isCellEditable(int r, int c) { return false; }
         };
 
-        // MOCK
-        // TODO: SELECT s.session_date, TIME_FORMAT(s.start_time,'%H:%i'),
-        //              TIME_FORMAT(s.end_time,'%H:%i'), s.capacity, s.booked_count,
-        //              IFNULL(i.name,'-'), s.status
-        //       FROM sessions s LEFT JOIN instructors i ON i.id = s.instructor_id
-        //       WHERE s.program_id = ? ORDER BY s.session_date, s.start_time
-        m.addRow(new Object[]{"2025-05-20", "07:00", "08:00", "20", "15", "김강사", "OPEN"});
-        m.addRow(new Object[]{"2025-05-22", "07:00", "08:00", "20", "14", "김강사", "OPEN"});
-        m.addRow(new Object[]{"2025-05-27", "07:00", "08:00", "20", "12", "-",     "OPEN"});
+        List<SessionListItemDTO> sessions = service.findSessionListByProgramId(programId);
+        for (SessionListItemDTO dto : sessions) {
+            m.addRow(new Object[]{
+                    dto.getSessionDate(),
+                    dto.getStartTime(),
+                    dto.getEndTime(),
+                    String.valueOf(dto.getCapacity()),
+                    String.valueOf(dto.getBookedCount()),
+                    dto.getInstructorName(),
+                    dto.getStatus()
+            });
+        }
 
         HTable sTable = new HTable(m);
         sTable.setBadgeRenderer(6);

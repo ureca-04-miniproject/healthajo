@@ -3,7 +3,6 @@ package healthajo.jdbc.table;
 import healthajo.jdbc.core.Column;
 import healthajo.jdbc.core.TableBase;
 
-import java.sql.Timestamp;
 import java.time.LocalDateTime;
 
 public final class TPrograms extends TableBase {

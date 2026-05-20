@@ -9,6 +9,8 @@ import healthajo.component.HTextField;
 import healthajo.component.theme.AppTheme;
 import java.awt.*;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 import javax.swing.*;
 import javax.swing.border.*;
 import javax.swing.table.DefaultTableModel;
@@ -37,10 +39,14 @@ public class ScheduleFormDialog extends JDialog {
     private JTable         weekdayTable;
 
     public ScheduleFormDialog(JFrame parent, Object[] data) {
-        this(parent, data, null);
+        this(parent, data, null, null);
     }
 
     public ScheduleFormDialog(JFrame parent, Object[] data, String fixedProgram) {
+        this(parent, data, fixedProgram, null);
+    }
+
+    public ScheduleFormDialog(JFrame parent, Object[] data, String fixedProgram, List<Object[]> weekdayRows) {
         super(parent, data == null ? "스케줄 추가" : "스케줄 편집", true);
         setSize(620, 560);
         setResizable(false);
@@ -48,13 +54,13 @@ public class ScheduleFormDialog extends JDialog {
         getContentPane().setBackground(AppTheme.SURFACE);
         setLayout(new BorderLayout());
 
-        add(buildForm(data, fixedProgram), BorderLayout.CENTER);
-        add(buildFooter(),                 BorderLayout.SOUTH);
+        add(buildForm(data, fixedProgram, weekdayRows), BorderLayout.CENTER);
+        add(buildFooter(),                              BorderLayout.SOUTH);
     }
 
     // ── Form ──────────────────────────────────────────────────────────────────
 
-    private JPanel buildForm(Object[] data, String fixedProgram) {
+    private JPanel buildForm(Object[] data, String fixedProgram, List<Object[]> weekdayRows) {
         JPanel form = new JPanel();
         form.setBackground(AppTheme.SURFACE);
         form.setLayout(new BoxLayout(form, BoxLayout.Y_AXIS));
@@ -120,17 +126,12 @@ public class ScheduleFormDialog extends JDialog {
             }
             if (data.length > 4) capacityField.setText(data[4].toString());
 
-            // MOCK: 요일별 시간 데이터 (편집 모드)
-            // TODO: SELECT weekday,
-            //              TIME_FORMAT(start_time, '%H:%i') AS start_time,
-            //              TIME_FORMAT(end_time,   '%H:%i') AS end_time,
-            //              capacity
-            //       FROM schedule_weekdays
-            //       WHERE schedule_id = ?
-            //       ORDER BY FIELD(weekday, '월','화','수','목','금','토','일')
-            weekdayModel.addRow(new Object[]{"월", "07:00", "08:00", "20"});
-            weekdayModel.addRow(new Object[]{"수", "07:00", "08:00", "20"});
-            weekdayModel.addRow(new Object[]{"금", "07:00", "08:00", "20"});
+            // 외부에서 전달받은 요일별 시간 데이터 (Service에서 조회한 schedule_weekdays)
+            if (weekdayRows != null) {
+                for (Object[] row : weekdayRows) {
+                    weekdayModel.addRow(row);
+                }
+            }
         }
 
         return form;
@@ -285,4 +286,20 @@ public class ScheduleFormDialog extends JDialog {
 
     public boolean  isSaved()   { return saved; }
     public Object[] getValues() { return savedValues; }
+
+    // 저장 시점의 요일별 시간 입력 데이터 반환
+    // 각 행: [weekday("월"~"일"), startTime("HH:mm"), endTime("HH:mm"), capacity(문자열)]
+    public List<Object[]> getWeekdayRows() {
+        List<Object[]> rows = new ArrayList<>();
+        if (weekdayModel == null) return rows;
+        for (int i = 0; i < weekdayModel.getRowCount(); i++) {
+            rows.add(new Object[]{
+                    weekdayModel.getValueAt(i, 0),
+                    weekdayModel.getValueAt(i, 1),
+                    weekdayModel.getValueAt(i, 2),
+                    weekdayModel.getValueAt(i, 3)
+            });
+        }
+        return rows;
+    }
 }

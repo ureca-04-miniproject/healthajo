@@ -87,14 +87,14 @@ public class ProgramListPanel extends BaseListPanel {
 
         for(ProgramResponseDTO dto : dtos) {
             model.addRow(new Object[]{
-                    dto.getProgramId(),
-                    false,
-                    dto.getName(),
-                    dto.getType(),
-                    dto.getReservationTime(),
-                    "-",
-                    "-",
-                    dto.getStatus()
+                    false,                       // [0] 체크박스 (HTable.setCheckboxColumn(0)이 토글하는 자리)
+                    dto.getProgramId(),          // [1] ID (숨김 컬럼, 체크박스 클릭과 무관하게 보존)
+                    dto.getName(),               // [2] 프로그램명
+                    dto.getType(),               // [3] 종목
+                    dto.getReservationTime(),    // [4] 예약 가능 기간
+                    "-",                         // [5] 총 정원
+                    "-",                         // [6] 예약 수
+                    dto.getStatus()              // [7] 상태
             });
         }
         // MOCK: 개발용 목 데이터
@@ -111,10 +111,30 @@ public class ProgramListPanel extends BaseListPanel {
     private void onAdd() {
         ProgramFormDialog dialog = new ProgramFormDialog(parentFrame());
         dialog.setVisible(true);
-        if (dialog.isSaved()) {
-            String[] v = dialog.getValues();
-            model.addRow(new Object[]{false, v[0], v[1], v[2] + " ~ " + v[3], v[4], "0", "ACTIVE"});
+        if (!dialog.isSaved()) return;
+        try {
+            int capacity = Integer.parseInt(dialog.getCapacity());
+            getService().createProgram(
+                    dialog.getName(), dialog.getCategory(), dialog.getDescription(),
+                    dialog.getResStart(), dialog.getResEnd(), dialog.getCancelDeadline(),
+                    dialog.getOpStart(), dialog.getOpEnd(),
+                    capacity,
+                    dialog.getWeekdayRows()
+            );
+            reload();
             HToast.success(parentFrame(), "프로그램이 등록되었습니다.");
+        } catch (NumberFormatException ex) {
+            HDialog.error(parentFrame(), "기본 정원은 숫자로 입력하세요.");
+        } catch (Exception ex) {
+            ex.printStackTrace();   // IDE 콘솔에 전체 스택 출력
+            // 다이얼로그에는 원인 메시지(SQLException 등)를 끝까지 펼쳐서 표시
+            StringBuilder msg = new StringBuilder(String.valueOf(ex.getMessage()));
+            Throwable c = ex.getCause();
+            while (c != null) {
+                msg.append("\n원인: ").append(c.getMessage());
+                c = c.getCause();
+            }
+            HDialog.error(parentFrame(), "프로그램 등록 실패\n" + msg);
         }
     }
 
@@ -122,23 +142,37 @@ public class ProgramListPanel extends BaseListPanel {
         int[] rows = getCheckedRows();
         if (rows.length == 0) return;
 
-        // 예약이 있는 프로그램 삭제 불가 체크
+        if (!HDialog.confirmDanger(parentFrame(), "프로그램 삭제",
+                "선택한 " + rows.length + "개의 프로그램을 삭제하시겠습니까?\n" +
+                "세션이 등록된 프로그램은 삭제되지 않습니다.")) return;
+
+        int success = 0;
+        int blocked = 0;
         for (int r : rows) {
-            String booked = (String) getDataValue(r, 4);
-            if (!"0".equals(booked)) {
-                HDialog.alert(parentFrame(), "삭제 불가",
-                    "예약자가 존재하는 프로그램은 삭제할 수 없습니다.\n해당 프로그램의 예약을 먼저 취소하세요.",
-                    HDialog.Type.WARNING);
-                return;
+            // model[0]은 체크박스 자리(toggle되어 Boolean), ID는 model[1]에 보존됨
+            long programId = Long.parseLong(model.getValueAt(r, 1).toString());
+            try {
+                if (getService().deleteProgram(programId)) success++;
+                else                                       blocked++;
+            } catch (Exception ex) {
+                blocked++;
             }
         }
+        reload();
 
-        if (HDialog.confirmDanger(parentFrame(), "프로그램 삭제",
-                "선택한 " + rows.length + "개의 프로그램을 삭제하시겠습니까?\n연결된 스케줄 및 세션도 함께 삭제됩니다.")) {
-            // TODO: DELETE FROM programs WHERE id IN (...)
-            for (int i = rows.length - 1; i >= 0; i--) model.removeRow(rows[i]);
-            HToast.success(parentFrame(), rows.length + "개가 삭제되었습니다.");
+        if (blocked > 0) {
+            HDialog.alert(parentFrame(), "일부 삭제 불가",
+                    "세션이 등록된 프로그램은 삭제되지 않았습니다.\n" +
+                    "성공 " + success + "건, 차단 " + blocked + "건",
+                    HDialog.Type.WARNING);
+        } else {
+            HToast.success(parentFrame(), success + "개가 삭제되었습니다.");
         }
+    }
+
+    private void reload() {
+        model.setRowCount(0);
+        loadData();
     }
 
     private void onBulkIssueMembership() {
