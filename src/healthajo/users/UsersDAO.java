@@ -7,7 +7,7 @@ import java.util.List;
 
 public class UsersDAO {
 
-    private static final TUser T = TUser.USER;
+    public static final TUser T = TUser.USER;
 
     public List<Record> findAll() {
         return T.select()
@@ -28,6 +28,13 @@ public class UsersDAO {
     public Record findById(Long id) {
         return T.select()
                 .where(T.ID.eq(id))
+                .fetchOne();
+    }
+
+    public Record findByPhone(String phone) {
+        return T.select()
+                .where(T.DELETED_AT.isNull()
+                        .and(T.PHONE.eq(phone)))
                 .fetchOne();
     }
 

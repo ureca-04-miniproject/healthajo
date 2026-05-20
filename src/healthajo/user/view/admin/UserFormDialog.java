@@ -32,7 +32,7 @@ public class UserFormDialog extends JDialog {
         this.dao = dao;
         setLayout(new BorderLayout());
         setResizable(false);
-        setSize(440, 360);
+        setSize(440, 460);
         setLocationRelativeTo(parent);
         getContentPane().setBackground(AppTheme.SURFACE);
 
@@ -119,6 +119,10 @@ public class UserFormDialog extends JDialog {
         // TODO: INSERT INTO users (name, phone, email, created_at)
         //       VALUES (?, ?, ?, NOW())
         //       중복 전화번호 → showError("이미 등록된 전화번호입니다.")
+        if (dao.findByPhone(phone) != null) {
+            showError("이미 등록된 전화번호입니다.");
+            return;
+        }
         dao.insert(name, phone, email.isEmpty() ? null : email, "USER");
         saved = true;
         dispose();
@@ -127,7 +131,8 @@ public class UserFormDialog extends JDialog {
     private void showError(String message) {
         errLabel.setText(message);
         errLabel.setVisible(true);
-        errLabel.revalidate();
+        revalidate();
+        repaint();
     }
 
     public boolean isSaved() { return saved; }
