@@ -21,7 +21,7 @@ public final class AppTheme {
     }
 
     public static Font font(int style, int size) {
-        return new Font(FONT_FAMILY, style, size);
+        return new Font("SansSerif", style, size);
     }
 
     // ── Typography

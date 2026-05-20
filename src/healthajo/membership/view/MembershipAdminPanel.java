@@ -4,32 +4,44 @@ import healthajo.component.HButton;
 import healthajo.component.HDialog;
 import healthajo.component.HFormGroup;
 import healthajo.component.HLabel;
-import healthajo.component.HTable;
 import healthajo.component.HTextField;
 import healthajo.component.HToast;
 import healthajo.component.theme.AppTheme;
+import healthajo.jdbc.core.Record;
+import healthajo.memberships.service.MembershipService;
 import healthajo.template.BaseListPanel;
+
 import java.awt.*;
+import java.sql.Timestamp;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.MatteBorder;
 import javax.swing.table.TableColumnModel;
 
+import static healthajo.jdbc.table.TMembership.MEMBERSHIP;
+
 /**
- * 관리자 — 회원권 관리 화면.
- *
- * TODO: SELECT u.name, p.name AS program_name, m.name AS membership_name,
- *              m.total_count, m.remaining_count, m.status,
- *              DATE_FORMAT(m.issued_at, '%Y-%m-%d')
- *       FROM memberships m
- *       JOIN users u ON u.id = m.user_id
- *       JOIN programs p ON p.id = m.program_id
- *       ORDER BY m.issued_at DESC
+ * 관리자용 회원권 관리 화면.
  */
 public class MembershipAdminPanel extends BaseListPanel {
 
-    public MembershipAdminPanel() { super(); }
+    private static final MembershipService MEMBERSHIP_SERVICE = new MembershipService();
+    private static final int COL_MEMBER_NAME = 0;
+    private static final int COL_PROGRAM_NAME = 1;
+    private static final int COL_MEMBERSHIP_NAME = 2;
+    private static final int COL_TOTAL_COUNT = 3;
+    private static final int COL_REMAINING_COUNT = 4;
+    private static final int COL_STATUS = 5;
+    private static final int COL_ISSUED_AT = 6;
+
+    private List<Long> membershipIds;
+
+    public MembershipAdminPanel() {
+        super();
+    }
 
     @Override protected String   pageTitle()         { return "회원권 관리"; }
     @Override protected boolean  hasCheckbox()       { return false; }
@@ -45,10 +57,13 @@ public class MembershipAdminPanel extends BaseListPanel {
         HButton adjustBtn = HButton.secondary("횟수 수정", HButton.Size.SM);
         adjustBtn.addActionListener(e -> onAdjustCount());
 
+        HButton deleteBtn = HButton.danger("회원권 삭제", HButton.Size.SM);
+        deleteBtn.addActionListener(e -> onDeleteMembership());
+
         HButton issueBtn = HButton.primary("회원권 발급", HButton.Size.SM);
         issueBtn.addActionListener(e -> onIssueMembership());
 
-        return List.of(adjustBtn, issueBtn);
+        return List.of(adjustBtn, deleteBtn, issueBtn);
     }
 
     @Override
@@ -62,14 +77,25 @@ public class MembershipAdminPanel extends BaseListPanel {
 
     @Override
     protected void loadData() {
-        // MOCK
-        // TODO: DB 조회 후 교체
-        model.addRow(new Object[]{"홍길동", "스피닝 A반",    "스피닝 A반 수강권",    "20", "15", "ACTIVE",  "2025-03-01"});
-        model.addRow(new Object[]{"김영희", "요가 기초반",   "요가 기초반 수강권",   "20", "20", "ACTIVE",  "2025-04-01"});
-        model.addRow(new Object[]{"이철수", "스피닝 A반",    "스피닝 A반 수강권",    "20",  "5", "ACTIVE",  "2025-03-01"});
-        model.addRow(new Object[]{"박민준", "골프 입문반",   "골프 입문반 수강권",   "16", "16", "ACTIVE",  "2025-05-01"});
-        model.addRow(new Object[]{"최서연", "필라테스 중급", "필라테스 중급 수강권", "24",  "0", "EXPIRED", "2025-02-01"});
-        model.addRow(new Object[]{"강동원", "요가 기초반",   "요가 기초반 수강권",   "20", "18", "ACTIVE",  "2025-04-15"});
+        ids().clear();
+        try {
+            List<Record> memberships = MEMBERSHIP_SERVICE.getAllMembershipsWithUserAndProgram();
+            for (Record record : memberships) {
+                Long membershipId = firstLong(record, "membership_id", "id", "memberships.id");
+                ids().add(membershipId);
+                model.addRow(new Object[]{
+                        text(record.get("user_name")),
+                        text(record.get("program_name")),
+                        text(record.get("membership_name")),
+                        text(record.get("total_count")),
+                        text(record.get("remaining_count")),
+                        text(record.get("status")),
+                        formatIssuedAt(record.get("issued_at"))
+                });
+            }
+        } catch (RuntimeException ex) {
+            HDialog.error(parentFrame(), "회원권 목록을 불러오지 못했습니다.\n" + ex.getMessage());
+        }
         setTotalCount(model.getRowCount());
     }
 
@@ -81,22 +107,27 @@ public class MembershipAdminPanel extends BaseListPanel {
     private void onAdjustCount() {
         int viewRow = table.getSelectedRow();
         if (viewRow < 0) {
-            HDialog.info(parentFrame(), "횟수를 수정할 회원권을 선택하세요.");
+            HDialog.info(parentFrame(), "잔수를 수정할 회원권을 선택하세요.");
             return;
         }
         onAdjustCountFor(table.convertRowIndexToModel(viewRow));
     }
 
     private void onAdjustCountFor(int mr) {
-        String name       = (String) model.getValueAt(mr, 0);
-        String membership = (String) model.getValueAt(mr, 2);
-        int remaining     = Integer.parseInt((String) model.getValueAt(mr, 4));
+        Long membershipId = getMembershipId(mr);
+        if (membershipId == null) {
+            HDialog.error(parentFrame(), "회원권 ID를 찾을 수 없습니다.");
+            return;
+        }
 
-        // 횟수 수정 다이얼로그
-        JDialog dlg = new JDialog(parentFrame(), "횟수 수정", true);
+        String name       = (String) model.getValueAt(mr, COL_MEMBER_NAME);
+        String membership = (String) model.getValueAt(mr, COL_MEMBERSHIP_NAME);
+        int total         = Integer.parseInt((String) model.getValueAt(mr, COL_TOTAL_COUNT));
+        int remaining     = Integer.parseInt((String) model.getValueAt(mr, COL_REMAINING_COUNT));
+
+        JDialog dlg = new JDialog(parentFrame(), "잔수 수정", true);
         dlg.setLayout(new BorderLayout());
-        dlg.setSize(380, 250);
-        dlg.setLocationRelativeTo(parentFrame());
+        dlg.setSize(400, 300);
         dlg.setResizable(false);
         dlg.getContentPane().setBackground(AppTheme.SURFACE);
 
@@ -120,10 +151,10 @@ public class MembershipAdminPanel extends BaseListPanel {
         preview.setAlignmentX(LEFT_ALIGNMENT);
         preview.setForeground(AppTheme.PRIMARY);
 
-        deltaField.addActionListener(e -> updatePreview(deltaField, preview, remaining));
+        deltaField.addActionListener(e -> updatePreview(deltaField, preview, remaining, total));
         deltaField.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
-            public void insertUpdate(javax.swing.event.DocumentEvent e) { updatePreview(deltaField, preview, remaining); }
-            public void removeUpdate(javax.swing.event.DocumentEvent e) { updatePreview(deltaField, preview, remaining); }
+            public void insertUpdate(javax.swing.event.DocumentEvent e) { updatePreview(deltaField, preview, remaining, total); }
+            public void removeUpdate(javax.swing.event.DocumentEvent e) { updatePreview(deltaField, preview, remaining, total); }
             public void changedUpdate(javax.swing.event.DocumentEvent e) {}
         });
 
@@ -145,18 +176,27 @@ public class MembershipAdminPanel extends BaseListPanel {
         cancel.addActionListener(e -> dlg.dispose());
         confirm.addActionListener(e -> {
             try {
-                int delta    = Integer.parseInt(deltaField.getText().trim().replace("+", ""));
-                int newCount = Math.max(0, remaining + delta);
-                // TODO: UPDATE memberships SET remaining_count = remaining_count + ?
-                //       WHERE id = ?
-                //       remaining_count > 0 AND status='EXPIRED' → status='ACTIVE'
-                //       remaining_count = 0 → status='EXPIRED'
-                model.setValueAt(String.valueOf(newCount), mr, 4);
-                model.setValueAt(newCount > 0 ? "ACTIVE" : "EXPIRED", mr, 5);
+                int delta = parseDelta(deltaField.getText());
+                int newCount = remaining + delta;
+                if (newCount < 0) {
+                    HDialog.error(parentFrame(), "잔여 횟수는 0보다 작을 수 없습니다.");
+                    return;
+                }
+
+                if (newCount > total) {
+                    HDialog.error(parentFrame(), "잔여 횟수는 총 횟수(" + total + "회)를 초과할 수 없습니다.");
+                    return;
+                }
+
+                MEMBERSHIP_SERVICE.updateRemainingCount(membershipId, newCount);
+
+                reloadFromDatabase();
                 dlg.dispose();
-                HToast.success(parentFrame(), "횟수가 수정되었습니다. (" + remaining + " → " + newCount + "회)");
+                HToast.success(parentFrame(), "잔수가 수정되었습니다. (" + remaining + " -> " + newCount + "회)");
             } catch (NumberFormatException ex) {
-                HDialog.error(parentFrame(), "유효한 숫자를 입력하세요. (예: 5 또는 -3)");
+                HDialog.error(parentFrame(), "유효한 숫자를 입력하세요. 예: 5 또는 -3");
+            } catch (RuntimeException ex) {
+                HDialog.error(parentFrame(), "잔수 수정에 실패했습니다.\n" + ex.getMessage());
             }
         });
 
@@ -165,14 +205,25 @@ public class MembershipAdminPanel extends BaseListPanel {
 
         dlg.add(form,   BorderLayout.CENTER);
         dlg.add(footer, BorderLayout.SOUTH);
+        dlg.setLocationRelativeTo(parentFrame());
         dlg.setVisible(true);
     }
 
-    private static void updatePreview(HTextField field, JLabel preview, int remaining) {
+    private static void updatePreview(HTextField field, JLabel preview, int remaining, int total) {
         try {
-            int delta    = Integer.parseInt(field.getText().trim().replace("+", ""));
-            int newCount = Math.max(0, remaining + delta);
+            int delta = parseDelta(field.getText());
+            int newCount = remaining + delta;
+            if (newCount < 0) {
+                preview.setText("조정 후 잔여: 0보다 작을 수 없음");
+                preview.setForeground(AppTheme.DANGER);
+                return;
+            }
             preview.setText("조정 후 잔여: " + newCount + "회" + (newCount == 0 ? " (만료)" : ""));
+            if (newCount > total) {
+                preview.setText("조정 후 잔여: 총 횟수(" + total + "회) 초과");
+                preview.setForeground(AppTheme.DANGER);
+                return;
+            }
             preview.setForeground(newCount > 0 ? AppTheme.PRIMARY : AppTheme.DANGER);
         } catch (NumberFormatException e) {
             preview.setText("조정 후 잔여: ?");
@@ -180,12 +231,104 @@ public class MembershipAdminPanel extends BaseListPanel {
         }
     }
 
+    private static int parseDelta(String input) {
+        String text = input == null ? "" : input.trim();
+        if (text.isEmpty() || text.equals("+") || text.equals("-")) {
+            throw new NumberFormatException("empty delta");
+        }
+        if (text.startsWith("+")) {
+            text = text.substring(1);
+        }
+        return Integer.parseInt(text);
+    }
+
     private void onIssueMembership() {
         MembershipIssueDialog dlg = new MembershipIssueDialog(parentFrame());
         dlg.setVisible(true);
         if (dlg.isIssued()) {
-            model.addRow(dlg.getIssuedRow());
+            reloadFromDatabase();
             HToast.success(parentFrame(), "회원권이 발급되었습니다.");
         }
+    }
+
+    private void onDeleteMembership() {
+        int viewRow = table.getSelectedRow();
+        if (viewRow < 0) {
+            HDialog.info(parentFrame(), "삭제할 회원권을 선택하세요.");
+            return;
+        }
+
+        int modelRow = table.convertRowIndexToModel(viewRow);
+        Long membershipId = getMembershipId(modelRow);
+        if (membershipId == null) {
+            HDialog.error(parentFrame(), "회원권 ID를 찾을 수 없습니다.");
+            return;
+        }
+
+        String userName = (String) model.getValueAt(modelRow, COL_MEMBER_NAME);
+        String membershipName = (String) model.getValueAt(modelRow, COL_MEMBERSHIP_NAME);
+        if (!HDialog.confirmDanger(parentFrame(), "회원권 삭제",
+                "[" + userName + "] " + membershipName + "\n회원권을 삭제하시겠습니까?")) {
+            return;
+        }
+
+        try {
+            MEMBERSHIP_SERVICE.deleteMembership(membershipId);
+            reloadFromDatabase();
+            HToast.success(parentFrame(), "회원권이 삭제되었습니다.");
+        } catch (RuntimeException ex) {
+            HDialog.error(parentFrame(), "회원권 삭제에 실패했습니다.\n" + ex.getMessage());
+        }
+    }
+
+    private void reloadFromDatabase() {
+        model.setRowCount(0);
+        loadData();
+    }
+
+    private Long getMembershipId(int modelRow) {
+        List<Long> ids = ids();
+        if (modelRow < 0 || modelRow >= ids.size()) {
+            return null;
+        }
+        return ids.get(modelRow);
+    }
+
+    private List<Long> ids() {
+        if (membershipIds == null) {
+            membershipIds = new ArrayList<>();
+        }
+        return membershipIds;
+    }
+
+    private static String text(Object value) {
+        return value == null ? "" : value.toString();
+    }
+
+    private static Long asLong(Object value) {
+        if (value instanceof Number number) {
+            return number.longValue();
+        }
+        return null;
+    }
+
+    private static Long firstLong(Record record, String... keys) {
+        for (String key : keys) {
+            Long value = asLong(record.get(key));
+            if (value != null) {
+                return value;
+            }
+        }
+        return null;
+    }
+
+    private static String formatIssuedAt(Object issuedAt) {
+        if (issuedAt == null) {
+            return "";
+        }
+        if (issuedAt instanceof Timestamp timestamp) {
+            return timestamp.toLocalDateTime().toLocalDate().format(DateTimeFormatter.ISO_LOCAL_DATE);
+        }
+        return issuedAt.toString();
     }
 }
