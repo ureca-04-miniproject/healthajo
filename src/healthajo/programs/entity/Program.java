@@ -1,4 +1,4 @@
-package healthajo.programs.app;
+package healthajo.programs.entity;
 
 import java.time.LocalDateTime;
 

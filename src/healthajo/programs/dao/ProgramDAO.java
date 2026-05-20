@@ -1,8 +1,12 @@
 package healthajo.programs.dao;
 
 import healthajo.jdbc.core.Record;
+import healthajo.jdbc.core.WindowFunction;
+import healthajo.jdbc.table.TProgramSchedules;
 import healthajo.jdbc.table.TPrograms;
-import healthajo.programs.app.Program;
+import healthajo.jdbc.table.TSessions;
+import healthajo.programs.dto.ProgramResponseDTO;
+import healthajo.programs.entity.Program;
 
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
@@ -11,6 +15,8 @@ import java.util.*;
 public class ProgramDAO {
 
     private static final TPrograms P = TPrograms.PROGRAMS;
+    private static final TProgramSchedules PS = TProgramSchedules.PROGRAM_SCHEDULES;
+    private static final TSessions S = TSessions.SESSIONS;
 
     // CREATE — 생성된 PK 반환
     public long insert(Program p) {
@@ -18,10 +24,10 @@ public class ProgramDAO {
                 .set(P.NAME,                  p.getName())
                 .set(P.DESCRIPTION,           p.getDescription())
                 .set(P.CATEGORY,              p.getCategory())
-                .set(P.RESERVATION_OPEN_AT,   toTs(p.getReservationOpenAt()))
-                .set(P.RESERVATION_CLOSE_AT,  toTs(p.getReservationCloseAt()))
-                .set(P.CANCELLATION_OPEN_AT,  toTs(p.getCancellationOpenAt()))
-                .set(P.CANCELLATION_CLOSE_AT, toTs(p.getCancellationCloseAt()))
+                .set(P.RESERVATION_OPEN_AT,   p.getReservationOpenAt())
+                .set(P.RESERVATION_CLOSE_AT,  p.getReservationCloseAt())
+                .set(P.CANCELLATION_OPEN_AT,  p.getCancellationOpenAt())
+                .set(P.CANCELLATION_CLOSE_AT, p.getCancellationCloseAt())
                 .executeAndReturnKey();
     }
 
@@ -37,19 +43,42 @@ public class ProgramDAO {
         return Optional.ofNullable(r).map(this::toEntity);
     }
 
-    // READ — 전체 목록 (소프트 삭제 제외, 최신순)
-    public List<Program> findAll() {
-        List<Record> rows = P.select(
-                        P.ID, P.NAME, P.DESCRIPTION, P.CATEGORY,
+    // READ - 프로그램 목록 조회
+    // 프로그램명, 종목, 예약 가능 시간, 총 정원, 예약 수, 상태
+    public List<Record> findAll() {
+        return P.select(
+                        P.ID,
+                        P.NAME, P.DESCRIPTION, P.CATEGORY,
                         P.RESERVATION_OPEN_AT, P.RESERVATION_CLOSE_AT,
                         P.CANCELLATION_OPEN_AT, P.CANCELLATION_CLOSE_AT,
-                        P.CREATED_AT, P.UPDATED_AT, P.DELETED_AT)
-                .where(P.DELETED_AT.isNull())
+                        P.CREATED_AT, P.UPDATED_AT
+                )
                 .orderByDesc(P.CREATED_AT)
                 .fetch();
-        List<Program> result = new ArrayList<>(rows.size());
-        for (Record r : rows) result.add(toEntity(r));
-        return result;
+    }
+
+    public Record findByProgramID(int id) {
+        // TODO: SELECT p.*, ps.schedule_type, ps.start_date, ps.end_date, ps.default_capacity
+        //       FROM programs p LEFT JOIN program_schedules ps ON ps.program_id = p.id
+        //       WHERE p.id = ?
+        return P.select(
+                P.ID,
+                P.NAME,
+                P.DESCRIPTION,
+                P.CATEGORY,
+                P.RESERVATION_OPEN_AT,
+                P.RESERVATION_CLOSE_AT,
+                P.CANCELLATION_OPEN_AT,
+                P.CANCELLATION_CLOSE_AT,
+                P.CREATED_AT,
+                P.UPDATED_AT,
+                P.DELETED_AT,
+
+                PS.START_DATE,
+                PS.END_DATE,
+                PS.DEFAULT_CAPACITY
+        ).leftJoin(PS).on(P.ID.eq(PS.PROGRAM_ID))
+                .where(P.ID.eq((long)id)).fetchOne();
     }
 
     // UPDATE — id 기준 전체 필드 갱신
@@ -61,10 +90,10 @@ public class ProgramDAO {
                 .set(P.NAME,                  p.getName())
                 .set(P.DESCRIPTION,           p.getDescription())
                 .set(P.CATEGORY,              p.getCategory())
-                .set(P.RESERVATION_OPEN_AT,   toTs(p.getReservationOpenAt()))
-                .set(P.RESERVATION_CLOSE_AT,  toTs(p.getReservationCloseAt()))
-                .set(P.CANCELLATION_OPEN_AT,  toTs(p.getCancellationOpenAt()))
-                .set(P.CANCELLATION_CLOSE_AT, toTs(p.getCancellationCloseAt()))
+                .set(P.RESERVATION_OPEN_AT,   p.getReservationOpenAt())
+                .set(P.RESERVATION_CLOSE_AT,  p.getReservationCloseAt())
+                .set(P.CANCELLATION_OPEN_AT,  p.getCancellationOpenAt())
+                .set(P.CANCELLATION_CLOSE_AT, p.getCancellationCloseAt())
                 .where(P.ID.eq(p.getId()).and(P.DELETED_AT.isNull()))
                 .execute();
     }
@@ -72,7 +101,7 @@ public class ProgramDAO {
     // DELETE — 소프트 삭제 (deleted_at = NOW)
     public int softDelete(long id) {
         return P.update()
-                .set(P.DELETED_AT, Timestamp.valueOf(LocalDateTime.now()))
+                .set(P.DELETED_AT, LocalDateTime.now())
                 .where(P.ID.eq(id).and(P.DELETED_AT.isNull()))
                 .execute();
     }
@@ -84,13 +113,13 @@ public class ProgramDAO {
                 r.get(P.NAME),
                 r.get(P.DESCRIPTION),
                 r.get(P.CATEGORY),
-                toLdt(r.get(P.RESERVATION_OPEN_AT)),
-                toLdt(r.get(P.RESERVATION_CLOSE_AT)),
-                toLdt(r.get(P.CANCELLATION_OPEN_AT)),
-                toLdt(r.get(P.CANCELLATION_CLOSE_AT)),
-                toLdt(r.get(P.CREATED_AT)),
-                toLdt(r.get(P.UPDATED_AT)),
-                toLdt(r.get(P.DELETED_AT))
+                r.get(P.RESERVATION_OPEN_AT),
+                r.get(P.RESERVATION_CLOSE_AT),
+                r.get(P.CANCELLATION_OPEN_AT),
+                r.get(P.CANCELLATION_CLOSE_AT),
+                r.get(P.CREATED_AT),
+                r.get(P.UPDATED_AT),
+                r.get(P.DELETED_AT)
         );
     }
 

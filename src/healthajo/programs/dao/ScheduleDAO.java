@@ -1,31 +1,32 @@
 package healthajo.programs.dao;
 
+import healthajo.jdbc.core.Field;
 import healthajo.jdbc.core.Record;
 import healthajo.jdbc.table.TProgramSchedules;
-import healthajo.jdbc.table.TPrograms;
-import healthajo.programs.app.Program;
-import healthajo.programs.app.Schedule;
+import healthajo.programs.entity.Schedule;
 
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.*;
 
 public class ScheduleDAO {
     private static final TProgramSchedules PS = TProgramSchedules.PROGRAM_SCHEDULES;
+//    private static final TScheduleWeekdays SW = TScheduleWeekdays.SCHEDULE_WEEKDAYS;
 
     // CREATE
     public long insert(Schedule sc) {
         return PS.insertInto()
                 .set(PS.ID,                      sc.getId())
                 .set(PS.PROGRAM_ID,              sc.getProgramId())
-                .set(PS.START_DATE,              toTs(sc.getStartDate()))
-                .set(PS.END_DATE,                toTs(sc.getEndDate()))
+                .set(PS.START_DATE,              sc.getStartDate())
+                .set(PS.END_DATE,                sc.getEndDate())
                 .set(PS.DEFAULT_CAPACITY,        sc.getDefaultCapacity())
-                .set(PS.SLOT_OPEN_TIME,          toTs(sc.getSlotOpenTime()))
-                .set(PS.SLOT_CLOSE_TIME,         toTs(sc.getSlotCloseTime()))
+                .set(PS.SLOT_OPEN_TIME,          sc.getSlotOpenTime())
+                .set(PS.SLOT_CLOSE_TIME,         sc.getSlotCloseTime())
                 .set(PS.SLOT_DURATION_TIME,      sc.getSlotDurationTime())
-                .set(PS.CREATED_AT,              toTs(sc.getCreatedAt()))
-                .set(PS.UPDATED_AT,              toTs(sc.getUpdatedAt()))
+                .set(PS.CREATED_AT,              sc.getCreatedAt())
+                .set(PS.UPDATED_AT,              sc.getUpdatedAt())
                 .executeAndReturnKey();
     }
 
@@ -40,6 +41,36 @@ public class ScheduleDAO {
                 .fetchOne();
         return Optional.ofNullable(r).map(this::toEntity);
     }
+
+    public List<Schedule> findByProgramId(long programId) {
+        List<Record> rows = PS.select(
+                        PS.ID, PS.PROGRAM_ID, PS.START_DATE, PS.END_DATE,
+                        PS.DEFAULT_CAPACITY, PS.SLOT_OPEN_TIME,
+                        PS.SLOT_CLOSE_TIME, PS.SLOT_DURATION_TIME,
+                        PS.CREATED_AT, PS.UPDATED_AT)
+                .where(PS.PROGRAM_ID.eq(programId))
+                .orderByDesc(PS.CREATED_AT)
+                .fetch();
+        List<Schedule> result = new ArrayList<>(rows.size());
+        for (Record r : rows) result.add(toEntity(r));
+        return result;
+    }
+
+//    public List<Record> findListItemsByProgramId(long programId) {
+//        Field weekdayCount = () ->
+//                "COUNT(" + SW.ID.getQualifiedName() + ") AS weekday_count";
+//
+//        return PS.select(
+//                        PS.ID, PS.START_DATE, PS.END_DATE,
+//                        PS.DEFAULT_CAPACITY, PS.SLOT_OPEN_TIME,
+//                        weekdayCount
+//                )
+//                .leftJoin(SW).on(SW.SCHEDULE_ID.eq(PS.ID))
+//                .where(PS.PROGRAM_ID.eq(programId))
+//                .groupBy(PS.ID)
+//                .orderByDesc(PS.CREATED_AT)
+//                .fetch();
+//    }
 
     public List<Schedule> findAll() {
         List<Record> rows = PS.select(
@@ -58,22 +89,18 @@ public class ScheduleDAO {
         return new Schedule(
                 r.get(PS.ID),
                 r.get(PS.PROGRAM_ID),
-                toLdt(r.get(PS.START_DATE)),
-                toLdt(r.get(PS.END_DATE)),
+                r.get(PS.START_DATE),
+                r.get(PS.END_DATE),
                 r.get(PS.DEFAULT_CAPACITY),
-                toLdt(r.get(PS.SLOT_OPEN_TIME)),
-                toLdt(r.get(PS.SLOT_CLOSE_TIME)),
+                r.get(PS.SLOT_OPEN_TIME),
+                r.get(PS.SLOT_CLOSE_TIME),
                 r.get(PS.SLOT_DURATION_TIME),
-                toLdt(r.get(PS.CREATED_AT)),
-                toLdt(r.get(PS.UPDATED_AT))
+                r.get(PS.CREATED_AT),
+                r.get(PS.UPDATED_AT)
         );
     }
 
-    private static Timestamp toTs(LocalDateTime ldt) {
-        return ldt == null ? null : Timestamp.valueOf(ldt);
-    }
-
-    private static LocalDateTime toLdt(Timestamp ts) {
-        return ts == null ? null : ts.toLocalDateTime();
+    private static LocalTime toLt(LocalDateTime ldt) {
+        return ldt == null ? null : ldt.toLocalTime();
     }
 }

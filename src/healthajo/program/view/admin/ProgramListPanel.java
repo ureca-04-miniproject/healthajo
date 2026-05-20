@@ -1,12 +1,18 @@
 package healthajo.program.view.admin;
 
+import com.mysql.cj.xdevapi.Table;
 import healthajo.component.HButton;
 import healthajo.component.HDialog;
 import healthajo.component.HToast;
 import healthajo.component.theme.AppTheme;
+import healthajo.jdbc.table.TPrograms;
+import healthajo.programs.dao.ProgramDAO;
+import healthajo.programs.dto.ProgramResponseDTO;
+import healthajo.programs.service.ProgramService;
 import healthajo.template.BaseListPanel;
-import java.util.List;
-import javax.swing.JComponent;
+import java.util.*;
+import javax.swing.*;
+import javax.swing.table.TableColumn;
 import javax.swing.table.TableColumnModel;
 
 /**
@@ -22,6 +28,8 @@ import javax.swing.table.TableColumnModel;
  *       ORDER BY p.created_at DESC
  */
 public class ProgramListPanel extends BaseListPanel {
+    private static final TPrograms T = TPrograms.PROGRAMS;
+    private ProgramService service;
 
     private HButton deleteBtn;
 
@@ -38,7 +46,7 @@ public class ProgramListPanel extends BaseListPanel {
 
     @Override
     protected String[] columnNames() {
-        return new String[]{"프로그램명", "종목", "예약 가능 기간", "총 정원", "예약 수", "상태"};
+        return new String[]{ "ID", "프로그램명", "종목", "예약 가능 기간", "총 정원", "예약 수", "상태"};
     }
 
     @Override
@@ -58,29 +66,46 @@ public class ProgramListPanel extends BaseListPanel {
 
     @Override
     protected void configureColumns(TableColumnModel cm) {
+        TableColumn idCol = cm.getColumn(1);
+        idCol.setMinWidth(0);
+        idCol.setMaxWidth(0);
+        idCol.setPreferredWidth(0);
+        idCol.setResizable(false);
+
         int[] widths = {160, 80, 200, 70, 70, 80};
         for (int i = 0; i < widths.length; i++) {
-            cm.getColumn(i + 1).setPreferredWidth(widths[i]);
+            cm.getColumn(i + 2).setPreferredWidth(widths[i]);
         }
-        table.setBadgeRenderer(6); // 상태 컬럼 (checkbox[0] + 5 data cols + 상태[6])
+        table.setBadgeRenderer(7); // 상태 컬럼 (checkbox[0] + 5 data cols + 상태[6])
     }
 
     @Override
     protected void loadData() {
-        // MOCK: 개발용 목 데이터
         // TODO: DB 조회 후 교체
-        model.addRow(new Object[]{false, "스피닝 A반",    "SPINNING",  "2025-04-01 ~ 2025-09-30", "20", "15", "ACTIVE"});
-        model.addRow(new Object[]{false, "요가 기초반",   "YOGA",      "2025-04-01 ~ 2025-09-30", "15", "12", "ACTIVE"});
-        model.addRow(new Object[]{false, "필라테스 중급", "PILATES",   "2025-03-01 ~ 2025-08-31", "12", "10", "ACTIVE"});
-        model.addRow(new Object[]{false, "골프 입문반",   "GOLF",      "2025-05-01 ~ 2025-10-31", "10",  "4", "ACTIVE"});
-        model.addRow(new Object[]{false, "스피닝 B반",    "SPINNING",  "2025-01-01 ~ 2025-03-31", "20", "20", "EXPIRED"});
+//        dao.findAll();
+        List<ProgramResponseDTO> dtos = getService().getProgramList();
+
+        for(ProgramResponseDTO dto : dtos) {
+            model.addRow(new Object[]{
+                    dto.getProgramId(),
+                    false,
+                    dto.getName(),
+                    dto.getType(),
+                    dto.getReservationTime(),
+                    "-",
+                    "-",
+                    dto.getStatus()
+            });
+        }
+        // MOCK: 개발용 목 데이터
+//        model.addRow(new Object[]{false, "스피닝 A반",    "SPINNING",  "2025-04-01 ~ 2025-09-30", "20", "15", "ACTIVE"});
         setTotalCount(model.getRowCount());
     }
 
     @Override
     protected void onRowDoubleClick(int modelRow) {
         Object[] data = getRowData(modelRow);
-        new ProgramDetailDialog(parentFrame(), data).setVisible(true);
+        new ProgramDetailDialog(parentFrame(), data, getService()).setVisible(true);
     }
 
     private void onAdd() {
@@ -137,7 +162,15 @@ public class ProgramListPanel extends BaseListPanel {
             //       WHERE r.session_id IN (SELECT id FROM sessions WHERE program_id = ?)
             //         AND r.status = 'CONFIRMED'
             //       UPDATE reservations SET status = 'MEMBERSHIP_ISSUED', membership_id = ...
+
             HToast.success(parentFrame(), booked + "명에게 회원권이 발급되었습니다.");
         }
+    }
+
+    private ProgramService getService() {
+        if (service == null) {
+            service = new ProgramService();
+        }
+        return service;
     }
 }

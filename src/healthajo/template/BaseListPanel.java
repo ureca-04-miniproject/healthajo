@@ -276,7 +276,7 @@ public abstract class BaseListPanel extends JPanel {
     }
 
     protected Object[] getRowData(int modelRow) {
-        int offset = hasCheckbox() ? 1 : 0;
+        int offset = hasCheckbox() ? 0 : 0;
         int count  = model.getColumnCount() - offset;
         Object[] data = new Object[count];
         for (int i = 0; i < count; i++) data[i] = model.getValueAt(modelRow, i + offset);

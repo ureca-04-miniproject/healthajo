@@ -1,6 +1,7 @@
-package healthajo.programs.app;
+package healthajo.programs.entity;
 
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 
 public final class Schedule {
     private final Long id;
@@ -8,15 +9,15 @@ public final class Schedule {
     private final LocalDateTime startDate;
     private final LocalDateTime endDate;
     private final Integer defaultCapacity;
-    private final LocalDateTime slotOpenTime;
-    private final LocalDateTime slotCloseTime;
+    private final LocalTime slotOpenTime;
+    private final LocalTime slotCloseTime;
     private final Integer slotDurationTime;
     private final LocalDateTime createdAt;
     private final LocalDateTime updatedAt;
 
     public Schedule(Long id, Long programId,
                     LocalDateTime startDate, LocalDateTime endDate,
-                    Integer defaultCapacity, LocalDateTime slotOpenTime, LocalDateTime slotCloseTime,
+                    Integer defaultCapacity, LocalTime slotOpenTime, LocalTime slotCloseTime,
                     Integer slotDurationTime, LocalDateTime createdAt, LocalDateTime updatedAt) {
         this.id = id;
         this.programId = programId;
@@ -35,8 +36,8 @@ public final class Schedule {
     public LocalDateTime getStartDate()                  { return startDate; }
     public LocalDateTime getEndDate()                    { return endDate; }
     public Integer getDefaultCapacity()                  { return defaultCapacity; }
-    public LocalDateTime getSlotOpenTime()               { return slotOpenTime; }
-    public LocalDateTime getSlotCloseTime()              { return slotCloseTime; }
+    public LocalTime getSlotOpenTime()               { return slotOpenTime; }
+    public LocalTime getSlotCloseTime()              { return slotCloseTime; }
     public Integer getSlotDurationTime()                 { return slotDurationTime; }
     public LocalDateTime getCreatedAt()                  { return createdAt; }
     public LocalDateTime getUpdatedAt()                  { return updatedAt; }
