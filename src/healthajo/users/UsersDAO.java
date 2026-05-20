@@ -4,6 +4,7 @@ import healthajo.jdbc.table.TUser;
 import healthajo.jdbc.core.Record;
 import java.sql.Timestamp;
 import java.util.List;
+import healthajo.jdbc.core.Field;
 
 public class UsersDAO {
 
@@ -14,6 +15,24 @@ public class UsersDAO {
                 .where(T.DELETED_AT.isNull())
                 .orderBy(T.ID)
                 .fetch();
+    }
+
+    public List<Record> findAllWithStats() {
+        return T.select(
+                T.ID,
+                T.NAME,
+                T.PHONE,
+                T.EMAIL,
+                T.CREATED_AT,
+                field("(SELECT COALESCE(SUM(m.remaining_count), 0) " +
+                        "FROM memberships m WHERE m.user_id = users.id) AS membership_count")
+        )
+        .where(T.DELETED_AT.isNull())
+        .orderBy(T.ID)
+        .fetch();
+    }
+    private static Field field(String sql) {
+        return () -> sql;
     }
 
     public List<Record> search(String keyword) {
