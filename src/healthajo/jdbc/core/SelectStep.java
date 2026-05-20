@@ -23,6 +23,7 @@ public class SelectStep {
     private Condition havingCondition;
     private final List<String> orderByClauses = new ArrayList<>();
     private Integer limitVal;
+    private Integer offsetVal;
 
     SelectStep(FromSource fromSource, Field[] fields) {
         this.fromSource = fromSource;
@@ -83,6 +84,35 @@ public class SelectStep {
         return this;
     }
 
+    /** 페이지네이션 offset 지정. LIMIT 없이 단독 사용 시 LIMIT 200 적용. */
+    public SelectStep offset(int n) {
+        this.offsetVal = n;
+        return this;
+    }
+
+    /**
+     * step 상태를 변형하지 않고 LIMIT/OFFSET을 적용한 결과를 반환.
+     * {@link Page#of} 내부에서 사용 — 호출 후에도 step을 재사용할 수 있다.
+     */
+    List<Record> fetchWithRange(int limit, int rawOffset) {
+        String sql = buildCoreSql();
+        StringBuilder sb = new StringBuilder(sql);
+        if (!orderByClauses.isEmpty())
+            sb.append(" ORDER BY ").append(String.join(", ", orderByClauses));
+        sb.append(" LIMIT ").append(limit).append(" OFFSET ").append(rawOffset);
+
+        try (JdbcConnectionFactory.JdbcConnection jc = JdbcConnectionFactory.getInstance().getConnection()) {
+            Connection conn = jc.get();
+            try (PreparedStatement ps = conn.prepareStatement(sb.toString())) {
+                int idx = 1;
+                for (Object binding : collectAllBindings()) ps.setObject(idx++, binding);
+                try (ResultSet rs = ps.executeQuery()) { return mapResults(rs); }
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("SELECT 실행 실패: " + sb, e);
+        }
+    }
+
     public String toSql() { return buildSql(); }
 
     // ── 실행 ──────────────────────────────────────────────────────────
@@ -115,6 +145,29 @@ public class SelectStep {
         }
     }
 
+    /**
+     * WHERE·JOIN 조건은 유지한 채 전체 행 수를 반환.
+     * ORDER BY·LIMIT·OFFSET은 COUNT에 영향을 주지 않으므로 제거 후
+     * {@code SELECT COUNT(*) FROM (inner) AS _count_wrap} 으로 감쌈.
+     */
+    public long fetchCount() {
+        String sql = "SELECT COUNT(*) FROM (" + buildCoreSql() + ") AS _count_wrap";
+        try (JdbcConnectionFactory.JdbcConnection jc = JdbcConnectionFactory.getInstance().getConnection()) {
+            Connection conn = jc.get();
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                int idx = 1;
+                for (Object binding : collectAllBindings()) {
+                    ps.setObject(idx++, binding);
+                }
+                try (ResultSet rs = ps.executeQuery()) {
+                    return rs.next() ? rs.getLong(1) : 0L;
+                }
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("COUNT 실행 실패: " + sql, e);
+        }
+    }
+
     // ── 바인딩 수집 (서브쿼리 중첩 포함) ─────────────────────────────
     public List<Object> collectAllBindings() {
         List<Object> all = new ArrayList<>();
@@ -134,33 +187,47 @@ public class SelectStep {
     }
 
     // ── SQL 빌드 ──────────────────────────────────────────────────────
-    private String buildSql() {
+
+    /** SELECT … FROM … JOIN … WHERE … GROUP BY … HAVING — ORDER BY·LIMIT·OFFSET 제외 */
+    private String buildCoreSql() {
         StringBuilder sb = new StringBuilder("SELECT ");
         if (fields == null || fields.length == 0) {
-            sb.append(joins.isEmpty() ? fromSource.getPrefix() + ".*" : "*");
+            if (joins.isEmpty()) {
+                sb.append(fromSource.getPrefix()).append(".*");
+            } else {
+                // 필드 미지정 + JOIN → a.*, b.*, c.* 자동 생성
+                StringJoiner sj = new StringJoiner(", ");
+                sj.add(fromSource.getPrefix() + ".*");
+                for (JoinClause join : joins) sj.add(join.getSourcePrefix() + ".*");
+                sb.append(sj);
+            }
         } else {
             StringJoiner cols = new StringJoiner(", ");
             for (Field field : fields) cols.add(field.toSqlWithAlias());
             sb.append(cols);
         }
         sb.append(" FROM ").append(fromSource.toFromSql());
-        for (JoinClause join : joins) {
-            sb.append(" ").append(join.toSql());
-        }
-        if (condition != null) {
-            sb.append(" WHERE ").append(condition.getSql());
-        }
-        if (!groupByClauses.isEmpty()) {
-            sb.append(" GROUP BY ").append(String.join(", ", groupByClauses));
-        }
-        if (havingCondition != null) {
-            sb.append(" HAVING ").append(havingCondition.getSql());
-        }
+        for (JoinClause join : joins) sb.append(" ").append(join.toSql());
+        if (condition != null)        sb.append(" WHERE ").append(condition.getSql());
+        if (!groupByClauses.isEmpty()) sb.append(" GROUP BY ").append(String.join(", ", groupByClauses));
+        if (havingCondition != null)  sb.append(" HAVING ").append(havingCondition.getSql());
+        return sb.toString();
+    }
+
+    private String buildSql() {
+        StringBuilder sb = new StringBuilder(buildCoreSql());
         if (!orderByClauses.isEmpty()) {
             sb.append(" ORDER BY ").append(String.join(", ", orderByClauses));
         }
-        if (limitVal != null) {
-            sb.append(" LIMIT ").append(limitVal);
+        if (limitVal != null || offsetVal != null) {
+            int effectiveLimit = limitVal != null ? limitVal : 200;
+            sb.append(" LIMIT ").append(effectiveLimit);
+            if (offsetVal != null) {
+                // limit 명시 → offset은 raw 값
+                // limit 미지정 → offset을 page number로 해석해 effectiveLimit * page
+                int effectiveOffset = limitVal != null ? offsetVal : effectiveLimit * offsetVal;
+                sb.append(" OFFSET ").append(effectiveOffset);
+            }
         }
         return sb.toString();
     }

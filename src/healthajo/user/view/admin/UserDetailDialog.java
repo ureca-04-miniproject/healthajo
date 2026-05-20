@@ -1,6 +1,5 @@
 package healthajo.user.view.admin;
 
-import healthajo.component.HBadge;
 import healthajo.component.HButton;
 import healthajo.component.HDialog;
 import healthajo.component.HLabel;
@@ -9,26 +8,33 @@ import healthajo.component.HTable;
 import healthajo.component.HTextField;
 import healthajo.component.HToast;
 import healthajo.component.theme.AppTheme;
+import healthajo.users.UsersDAO;
+import healthajo.memberships.service.MembershipService;
+
 import java.awt.*;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.MatteBorder;
 import javax.swing.table.DefaultTableModel;
+import java.util.List;
+import healthajo.jdbc.core.Record;
 
 /**
  * 사용자 상세 다이얼로그.
- *
+
  * 탭 구성:
  *   1) 기본 정보 — 이름, 전화번호, 이메일 (수정 가능)
  *   2) 회원권    — 보유 회원권 목록, 횟수 수정
  *   3) 예약 이력 — 예약 테이블
- *
+
  * TODO: 각 탭 데이터를 DB에서 조회
  */
 public class UserDetailDialog extends JDialog {
 
     private final Object[] rowData;
-    private final int      modelRow;
+    private final UsersDAO dao;
+    private final Long      userId;
+    private final MembershipService membershipService = new MembershipService();
 
     // 기본 정보 탭 필드 (수정 모드용)
     private HTextField nameField;
@@ -37,10 +43,11 @@ public class UserDetailDialog extends JDialog {
     private HButton    editBtn;
     private boolean    editMode = false;
 
-    public UserDetailDialog(JFrame parent, Object[] rowData, int modelRow) {
+    public UserDetailDialog(JFrame parent, Object[] rowData, int modelRow, UsersDAO dao, Long userId) {
         super(parent, "사용자 상세", true);
         this.rowData  = rowData;
-        this.modelRow = modelRow;
+        this.dao      = dao;
+        this.userId   = userId;
         setLayout(new BorderLayout());
         setSize(600, 520);
         setLocationRelativeTo(parent);
@@ -136,6 +143,10 @@ public class UserDetailDialog extends JDialog {
             } else {
                 // 저장 처리
                 // TODO: UPDATE users SET name=?, phone=?, email=? WHERE id=?
+                String name = nameField.getText().trim();
+                String phone = phoneField.getText().trim();
+                String email = emailField.getText().trim();
+                dao.update(userId, name, phone, email.isEmpty() ? null : email);
                 HToast.success(parent, "변경 사항이 저장되었습니다.");
                 cancelEditBtn.setVisible(false);
             }
@@ -184,9 +195,20 @@ public class UserDetailDialog extends JDialog {
         //       JOIN programs p ON p.id = m.program_id
         //       WHERE m.user_id = ?
         //       ORDER BY m.issued_at DESC
-        mModel.addRow(new Object[]{"스피닝 A반 수강권", "스피닝 A반",    "20", "15", "ACTIVE",  "2025-03-01"});
-        mModel.addRow(new Object[]{"요가 기초반 수강권", "요가 기초반",   "20", "20", "ACTIVE",  "2025-04-01"});
-        mModel.addRow(new Object[]{"필라테스 수강권",   "필라테스 중급", "12",  "0", "EXPIRED", "2025-01-10"});
+        List<Record> memberships = membershipService.getMembershipsWithProgramByUserId(userId);
+        for (Record r : memberships) {
+            Object issuedAt = r.get("issued_at");
+            String issuedStr = issuedAt == null ? "" : issuedAt.toString();
+            if (issuedStr.length() >= 10) issuedStr = issuedStr.substring(0, 10);
+            mModel.addRow(new Object[]{
+                    r.get("membership_name"),
+                    r.get("program_name"),
+                    r.get("total_count"),
+                    r.get("remaining_count"),
+                    r.get("status"),
+                    issuedStr
+            });
+        }
 
         HTable mTable = new HTable(mModel);
         mTable.setBadgeRenderer(4);
@@ -227,6 +249,9 @@ public class UserDetailDialog extends JDialog {
                 //       WHERE id = ?
                 //       remaining_count > 0 AND status='EXPIRED' → status='ACTIVE'
                 //       remaining_count = 0 → status='EXPIRED'
+
+                // membership 기능 개발되면 추후 반영
+
                 mModel.setValueAt(String.valueOf(newCount), modelRow, 3);
                 mModel.setValueAt(newCount > 0 ? "ACTIVE" : "EXPIRED", modelRow, 4);
                 HToast.success((JFrame) getOwner(), "횟수가 수정되었습니다.");
@@ -255,6 +280,9 @@ public class UserDetailDialog extends JDialog {
         //       JOIN programs p ON p.id = s.program_id
         //       WHERE r.user_id = ?
         //       ORDER BY r.reserved_at DESC
+
+        // reservations 기능 개발되면 추후 반영
+
         rModel.addRow(new Object[]{"스피닝 A반",    "2025-05-20", "CONFIRMED",        "PENDING",  "2025-05-01"});
         rModel.addRow(new Object[]{"요가 기초반",   "2025-05-15", "MEMBERSHIP_ISSUED", "ATTENDED", "2025-04-20"});
         rModel.addRow(new Object[]{"필라테스 중급", "2025-03-10", "CANCELLED",        "ABSENT",   "2025-03-01"});

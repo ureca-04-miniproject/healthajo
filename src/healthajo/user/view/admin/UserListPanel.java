@@ -6,9 +6,17 @@ import healthajo.component.HTable;
 import healthajo.component.HToast;
 import healthajo.component.theme.AppTheme;
 import healthajo.template.BaseListPanel;
+
+import java.util.Comparator;
 import java.util.List;
 import javax.swing.*;
 import javax.swing.table.TableColumnModel;
+import javax.swing.table.TableRowSorter;
+
+import healthajo.jdbc.core.Record;
+import healthajo.jdbc.table.TUser;
+import healthajo.users.UsersDAO;
+import java.util.ArrayList;
 
 /**
  * 관리자 — 사용자 관리 화면.
@@ -20,9 +28,13 @@ import javax.swing.table.TableColumnModel;
  *       WHERE u.deleted_at IS NULL
  *       ORDER BY u.created_at DESC
  */
+
 public class UserListPanel extends BaseListPanel {
 
     private HButton deleteBtn;
+    private static final TUser T = TUser.USER;
+    private UsersDAO dao;
+    private List<Long> idList;
 
     public UserListPanel() {
         super();
@@ -45,14 +57,19 @@ public class UserListPanel extends BaseListPanel {
 
     @Override
     protected List<? extends JComponent> toolbarButtons() {
-        deleteBtn = HButton.danger("삭제", HButton.Size.SM);
-        deleteBtn.setEnabled(false);
-        deleteBtn.addActionListener(e -> onDelete());
+
 
         HButton addBtn = HButton.primary("사용자 추가", HButton.Size.SM);
         addBtn.addActionListener(e -> onAdd());
 
-        return List.of(deleteBtn, addBtn);
+        HButton editBtn = HButton.secondary("수정", HButton.Size.SM);
+        editBtn.addActionListener(e -> onEdit());
+
+        deleteBtn = HButton.danger("삭제", HButton.Size.SM);
+        deleteBtn.setEnabled(false);
+        deleteBtn.addActionListener(e -> onDelete());
+
+        return List.of(addBtn, editBtn, deleteBtn);
     }
 
     @Override
@@ -65,34 +82,59 @@ public class UserListPanel extends BaseListPanel {
 
     @Override
     protected void loadData() {
-        // MOCK: 개발용 목 데이터
         // TODO: DB 조회 후 model.addRow(...) 교체
-        model.addRow(new Object[]{false, "홍길동", "010-1234-5678", "hong@example.com", "2", "2025-01-15"});
-        model.addRow(new Object[]{false, "김영희", "010-2345-6789", "kim@example.com",  "1", "2025-02-01"});
-        model.addRow(new Object[]{false, "이철수", "010-3456-7890", "",                 "1", "2025-02-10"});
-        model.addRow(new Object[]{false, "박민준", "010-4567-8901", "park@example.com", "1", "2025-03-05"});
-        model.addRow(new Object[]{false, "최서연", "010-5678-9012", "choi@example.com", "0", "2025-03-20"});
-        model.addRow(new Object[]{false, "강동원", "010-7890-1234", "kang@example.com", "1", "2025-04-01"});
+        if (table.getRowSorter() instanceof TableRowSorter<?> sorter) {
+            sorter.setComparator(4, Comparator.comparingInt(o -> Integer.parseInt(o.toString())));
+        }
+        if (dao == null) dao = new UsersDAO();
+        model.setRowCount(0);
+        idList = new ArrayList<>();
+        List<Record> list = dao.findAllWithStats();
+        for (Record r : list) {
+            idList.add(r.get(T.ID));
+            model.addRow(new Object[]{
+                    false,
+                    r.get(T.NAME),
+                    r.get(T.PHONE),
+                    r.get(T.EMAIL) == null ? "" : r.get(T.EMAIL),
+                    r.get("membership_count") == null ? "0" : r.get("membership_count").toString(),
+                    r.get("created_at") == null ? "" : r.get("created_at").toString().substring(0, 10)
+            });
+        }
         setTotalCount(model.getRowCount());
     }
 
     @Override
     protected void onRowDoubleClick(int modelRow) {
         Object[] data = getRowData(modelRow);
-        new UserDetailDialog(parentFrame(), data, modelRow).setVisible(true);
         // TODO: 상세 다이얼로그 닫힌 후 변경 사항 있으면 해당 행 갱신
+        Long userId = idList.get(modelRow);
+        new UserDetailDialog(parentFrame(), data, modelRow, dao, userId).setVisible(true);
+        loadData();
     }
 
     private void onAdd() {
-        UserFormDialog dialog = new UserFormDialog(parentFrame(), null);
+        UserFormDialog dialog = new UserFormDialog(parentFrame(), null, dao);
         dialog.setVisible(true);
         if (dialog.isSaved()) {
             // MOCK: 입력값으로 새 행 추가
             String[] values = dialog.getValues();
-            model.addRow(new Object[]{false, values[0], values[1], values[2], "0",
-                                      java.time.LocalDate.now().toString()});
             HToast.success(parentFrame(), "사용자가 등록되었습니다.");
+            loadData();
         }
+    }
+
+    private void onEdit() {
+        int viewRow = table.getSelectedRow();
+        if (viewRow < 0) {
+            HDialog.info(parentFrame(), "수정할 사용자를 선택하세요.");
+            return;
+        }
+        int modelRow = table.convertRowIndexToModel(viewRow);
+        Object[] data = getRowData(modelRow);
+        Long userId = idList.get(modelRow);
+        new UserDetailDialog(parentFrame(), data, modelRow, dao, userId).setVisible(true);
+        loadData();
     }
 
     private void onDelete() {
@@ -111,8 +153,9 @@ public class UserListPanel extends BaseListPanel {
 
             // TODO: UPDATE users SET deleted_at = NOW() WHERE id IN (...)
             for (int i = rows.length - 1; i >= 0; i--) {
-                model.removeRow(rows[i]);
+                dao.delete(idList.get(rows[i]));
             }
+            loadData();
             HToast.success(parentFrame(), rows.length + "명이 삭제되었습니다.");
         }
     }
