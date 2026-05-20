@@ -3,6 +3,7 @@ package healthajo.programs.dao;
 import healthajo.jdbc.core.Field;
 import healthajo.jdbc.core.Record;
 import healthajo.jdbc.table.TProgramSchedules;
+import healthajo.jdbc.table.TScheduleWeekdays;
 import healthajo.programs.entity.Schedule;
 
 import java.sql.Timestamp;
@@ -12,7 +13,7 @@ import java.util.*;
 
 public class ScheduleDAO {
     private static final TProgramSchedules PS = TProgramSchedules.PROGRAM_SCHEDULES;
-//    private static final TScheduleWeekdays SW = TScheduleWeekdays.SCHEDULE_WEEKDAYS;
+    private static final TScheduleWeekdays SW = TScheduleWeekdays.SCHEDULE_WEEKDAYS;
 
     // CREATE
     public long insert(Schedule sc) {
@@ -56,21 +57,21 @@ public class ScheduleDAO {
         return result;
     }
 
-//    public List<Record> findListItemsByProgramId(long programId) {
-//        Field weekdayCount = () ->
-//                "COUNT(" + SW.ID.getQualifiedName() + ") AS weekday_count";
-//
-//        return PS.select(
-//                        PS.ID, PS.START_DATE, PS.END_DATE,
-//                        PS.DEFAULT_CAPACITY, PS.SLOT_OPEN_TIME,
-//                        weekdayCount
-//                )
-//                .leftJoin(SW).on(SW.SCHEDULE_ID.eq(PS.ID))
-//                .where(PS.PROGRAM_ID.eq(programId))
-//                .groupBy(PS.ID)
-//                .orderByDesc(PS.CREATED_AT)
-//                .fetch();
-//    }
+    public List<Record> findListItemsByProgramId(long programId) {
+        Field weekdayCount = () ->
+                "COUNT(" + SW.ID.getQualifiedName() + ") AS weekday_count";
+
+        return PS.select(
+                        PS.ID, PS.START_DATE, PS.END_DATE,
+                        PS.DEFAULT_CAPACITY,
+                        weekdayCount
+                )
+                .leftJoin(SW).on(SW.SCHEDULE_ID.eq(PS.ID))
+                .where(PS.PROGRAM_ID.eq(programId))
+                .groupBy(PS.ID)
+                .orderByDesc(PS.CREATED_AT)
+                .fetch();
+    }
 
     public List<Schedule> findAll() {
         List<Record> rows = PS.select(

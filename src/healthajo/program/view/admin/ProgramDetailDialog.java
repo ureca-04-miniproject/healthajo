@@ -7,9 +7,12 @@ import healthajo.component.HTabPanel;
 import healthajo.component.HTable;
 import healthajo.component.HToast;
 import healthajo.component.theme.AppTheme;
+import healthajo.jdbc.core.Record;
+import healthajo.programs.dto.ProgramResponseDTO;
 import healthajo.programs.service.ProgramService;
 import healthajo.schedule.view.admin.ScheduleFormDialog;
 import java.awt.*;
+import java.util.List;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.MatteBorder;
@@ -28,10 +31,12 @@ public class ProgramDetailDialog extends JDialog {
 
     private ProgramService service;
     private final String programName;
+    private final Long programId;
 
     public ProgramDetailDialog(JFrame parent, Object[] data, ProgramService service) {
         super(parent, "프로그램 상세", true);
         this.service = service;
+        this.programId = Long.parseLong(data[0].toString());
         this.programName = data[2].toString();
 
         setLayout(new BorderLayout());
@@ -119,6 +124,14 @@ public class ProgramDetailDialog extends JDialog {
             new String[]{"유형", "시작일", "종료일", "기본 정원", "요일 수"}, 0) {
             @Override public boolean isCellEditable(int r, int c) { return false; }
         };
+
+        var t = service.findListItemsByProgramId(programId);
+        
+        for(Record r : t) {
+            m.addRow(new Object[] {
+                    r.get(PS.ID)
+            });
+        }
 
         // MOCK
         // TODO: SELECT schedule_type, DATE_FORMAT(start_date,'%Y-%m-%d'),
