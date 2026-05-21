@@ -1,0 +1,1527 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>건강하조 · 헬스장 예약 관리 시스템</title>
+<link rel="icon" type="image/svg+xml" href="logo.svg" />
+<link rel="icon" type="image/x-icon" href="favicon.ico" sizes="any" />
+<link rel="apple-touch-icon" href="logo.svg" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" rel="stylesheet" />
+<style>
+  :root{
+    --bg:#f7f8fc;
+    --surface:#ffffff;
+    --ink:#0f1222;
+    --ink-2:#5b607a;
+    --ink-3:#9aa0bd;
+    --line:#e8eaf3;
+    --accent:#6366f1;
+    --accent-2:#8b5cf6;
+    --accent-soft:#eef0ff;
+    --mint:#22c55e;
+    --mint-soft:#eafff3;
+    --amber:#f59e0b;
+    --amber-soft:#fff7e8;
+    --sky:#3b82f6;
+    --sky-soft:#eaf2ff;
+    --rose:#ef4444;
+    --rose-soft:#ffeef0;
+    --radius:22px;
+    --shadow:0 24px 60px -24px rgba(60,66,120,.32);
+    --shadow-sm:0 8px 24px -12px rgba(60,66,120,.25);
+  }
+
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    font-family:"Pretendard","Pretendard Variable",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    background:var(--bg);
+    color:var(--ink);
+    overflow:hidden;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  /* ── decorative background blobs ── */
+  .bg-deco{position:fixed;inset:0;z-index:0;overflow:hidden;pointer-events:none}
+  .blob{position:absolute;border-radius:50%;filter:blur(70px);opacity:.5}
+  .blob.b1{width:520px;height:520px;background:radial-gradient(circle,#c7cbff,transparent 70%);top:-180px;right:-120px}
+  .blob.b2{width:460px;height:460px;background:radial-gradient(circle,#d9c9ff,transparent 70%);bottom:-200px;left:-140px}
+  .blob.b3{width:360px;height:360px;background:radial-gradient(circle,#bfe3ff,transparent 70%);top:40%;left:45%}
+
+  /* ── deck / slides ── */
+  #deck{position:relative;z-index:1;height:100vh;width:100vw}
+  .slide{
+    position:absolute;inset:0;
+    display:none;
+    padding:64px 84px 88px;
+    flex-direction:column;
+    animation:fade .55s cubic-bezier(.16,.84,.44,1);
+  }
+  .slide.active{display:flex}
+  @keyframes fade{from{opacity:0;transform:translateY(18px) scale(.99)}to{opacity:1;transform:none}}
+  .reveal{animation:rise .6s both}
+  .reveal.d1{animation-delay:.05s}
+  .reveal.d2{animation-delay:.13s}
+  .reveal.d3{animation-delay:.21s}
+  .reveal.d4{animation-delay:.29s}
+  .reveal.d5{animation-delay:.37s}
+  .reveal.d6{animation-delay:.45s}
+  @keyframes rise{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:none}}
+
+  /* ── shared bits ── */
+  .kicker{
+    display:inline-flex;align-items:center;gap:8px;
+    font-size:13px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--accent);
+    background:var(--accent-soft);
+    padding:7px 14px;border-radius:999px;
+    width:fit-content;
+  }
+  .kicker .dot{width:7px;height:7px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 4px rgba(99,102,241,.18)}
+  h1.title{font-size:64px;font-weight:800;line-height:1.04;letter-spacing:-.02em}
+  h2.heading{font-size:42px;font-weight:800;letter-spacing:-.02em;line-height:1.1}
+  .heading .accent{color:var(--accent)}
+  .subhead{font-size:18px;color:var(--ink-2);font-weight:500;line-height:1.6}
+  .slide-head{margin-bottom:34px}
+  .grad-text{background:linear-gradient(120deg,var(--accent),var(--accent-2) 55%,#ec4899);-webkit-background-clip:text;background-clip:text;color:transparent}
+
+  /* ── progress + nav ── */
+  .progress{position:fixed;top:0;left:0;height:4px;background:linear-gradient(90deg,var(--accent),var(--accent-2));z-index:30;transition:width .4s cubic-bezier(.16,.84,.44,1);border-radius:0 4px 4px 0}
+  .footer{position:fixed;bottom:26px;left:84px;right:84px;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;z-index:20;font-size:13px;color:var(--ink-3);font-weight:600}
+  .footer .count{justify-self:end}
+  .brand-foot{display:flex;align-items:center;gap:9px;justify-self:start}
+  .brand-foot .mk{width:24px;height:22px;border-radius:7px;background:linear-gradient(135deg,var(--accent),var(--accent-2));display:grid;place-items:center;overflow:hidden}
+  .brand-foot .mk svg{width:22px;height:auto;display:block}
+  .dots{display:flex;gap:8px}
+  .dots button{width:9px;height:9px;border-radius:50%;border:none;background:#d3d7ea;cursor:pointer;padding:0;transition:.3s}
+  .dots button.on{background:var(--accent);width:26px;border-radius:6px}
+  kbd{background:#fff;border:1px solid var(--line);border-bottom-width:2px;border-radius:6px;padding:2px 8px;font-family:inherit;font-size:12px;font-weight:700;color:var(--ink-2)}
+
+  /* ── edge arrow buttons ── */
+  .edge-zone{position:fixed;top:0;bottom:0;width:150px;z-index:25;display:flex;align-items:center;pointer-events:none}
+  .edge-zone.left{left:0;justify-content:flex-start;padding-left:26px}
+  .edge-zone.right{right:0;justify-content:flex-end;padding-right:26px}
+  .nav-arrow{
+    pointer-events:auto;
+    width:60px;height:60px;border-radius:50%;
+    border:1px solid rgba(255,255,255,.7);
+    background:rgba(255,255,255,.45);
+    -webkit-backdrop-filter:blur(14px) saturate(170%);
+    backdrop-filter:blur(14px) saturate(170%);
+    box-shadow:0 12px 34px -10px rgba(60,66,120,.4);
+    color:var(--ink);
+    cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;
+    opacity:0;transform:scale(.7) translateX(var(--tx,0));
+    transition:opacity .3s ease,transform .3s cubic-bezier(.16,.84,.44,1),background .2s;
+  }
+  .nav-arrow svg{width:26px;height:26px;display:block}
+  .edge-zone.left .nav-arrow{--tx:-12px}
+  .edge-zone.right .nav-arrow{--tx:12px}
+  .nav-arrow.show{opacity:1;transform:scale(1) translateX(0)}
+  .nav-arrow:hover{background:rgba(255,255,255,.85);box-shadow:0 16px 40px -10px rgba(99,102,241,.5);transform:scale(1.1)!important;color:var(--accent)}
+  .nav-arrow:active{transform:scale(.96)!important}
+  .nav-arrow.gone{opacity:0!important;pointer-events:none}
+
+  /* ── cards ── */
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow-sm)}
+  .grid{display:grid;gap:18px}
+
+  /* === Slide 1 : title === */
+  .cover{justify-content:center;align-items:flex-start}
+  .cover .logo{display:flex;align-items:center;gap:16px;margin-bottom:30px}
+  .cover .mark{width:66px;height:62px;border-radius:18px;background:linear-gradient(135deg,var(--accent),var(--accent-2));display:grid;place-items:center;box-shadow:0 14px 30px -10px rgba(99,102,241,.6);overflow:hidden}
+  .cover .mark svg{width:60px;height:auto}
+  .cover .logo .nm{font-size:22px;font-weight:800;letter-spacing:-.01em}
+  .cover .logo .nm small{display:block;font-size:13px;color:var(--ink-3);font-weight:600;letter-spacing:.04em}
+  .cover h1{margin:18px 0 22px}
+  .cover .lead{font-size:22px;color:var(--ink-2);max-width:760px;line-height:1.6;font-weight:500}
+  .chips{display:flex;flex-wrap:wrap;gap:11px;margin-top:38px}
+  .chip{background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:10px 18px;font-size:14px;font-weight:700;color:var(--ink-2);box-shadow:var(--shadow-sm);display:flex;align-items:center;gap:8px}
+  .chip i{width:8px;height:8px;border-radius:50%;display:inline-block}
+
+  /* === table of contents === */
+  .toc-wrap{flex:1;display:grid;grid-template-columns:1fr 1.12fr;gap:24px;align-items:center;min-height:0}
+  .toc{display:flex;flex-direction:column;gap:9px}
+  .toc-item{display:flex;align-items:center;gap:16px;padding:10px 18px;background:var(--surface);border:1px solid var(--line);border-radius:13px;box-shadow:var(--shadow-sm);cursor:pointer;opacity:0;text-align:left;transition:transform .2s,box-shadow .2s,border-color .2s}
+  .toc-item.in{animation:tocIn .5s both}
+  .toc-item:hover{transform:translateX(7px);box-shadow:var(--shadow);border-color:transparent}
+  .toc-item .no{font-size:18px;font-weight:800;color:var(--accent);width:26px;flex-shrink:0;font-variant-numeric:tabular-nums}
+  .toc-item .ti{font-size:20px;width:26px;text-align:center;flex-shrink:0}
+  .toc-item .tt{font-size:17px;font-weight:800;color:var(--ink)}
+  .toc-item .en{margin-left:auto;font-size:12.5px;color:var(--ink-3);font-weight:700;letter-spacing:.02em}
+  @keyframes tocIn{from{opacity:0;transform:translateX(-28px)}to{opacity:1;transform:none}}
+
+  /* TOC right-side 3D app mockup */
+  .toc-visual{position:relative;height:100%;display:grid;place-items:center;min-height:0}
+  .toc-stack{position:relative;width:540px;height:438px;perspective:1500px;animation:floaty 5.5s ease-in-out infinite}
+  .app3d{position:absolute;width:360px;background:#fff;border:1px solid var(--line);border-radius:16px;overflow:hidden;transform:rotateY(-19deg) rotateX(7deg)}
+  .app3d.front{left:180px;top:130px;z-index:2;box-shadow:0 44px 86px -30px rgba(60,66,120,.6)}
+  .app3d.back{left:0;top:0;z-index:1;box-shadow:0 30px 60px -28px rgba(60,66,120,.5);filter:brightness(.97)}
+  .app3d .bar{display:flex;align-items:center;gap:5px;padding:8px 13px;background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#fff;font-weight:800;font-size:12px}
+  .app3d.back .bar{background:linear-gradient(135deg,#3b82f6,#0ea5e9)}
+  .app3d .bar i{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.55)}
+  .app3d .bar .t{margin-left:6px}
+  .app3d .body{display:flex;height:248px}
+  .app3d .side{width:84px;background:var(--bg);border-right:1px solid var(--line);padding:12px 11px;display:flex;flex-direction:column;gap:8px}
+  .app3d .side .sh{height:18px;border-radius:5px;background:#d7daee;margin-bottom:3px}
+  .app3d .side .nav{height:8px;border-radius:4px;background:#dfe2f1}
+  .app3d .side .nav.on{background:var(--accent)}
+  .app3d.back .side .nav.on{background:#3b82f6}
+  .app3d .main{flex:1;padding:11px;display:flex;flex-direction:column;gap:8px}
+  .app3d .mhead{display:flex;align-items:center;gap:6px}
+  .app3d .mhead .mt{width:54px;height:11px;border-radius:5px;background:#cdd1e6}
+  .app3d .mhead .ms{flex:1;height:14px;border-radius:7px;background:var(--bg);border:1px solid var(--line)}
+  .app3d .mhead .mb{width:26px;height:14px;border-radius:6px;background:var(--accent)}
+  .app3d.back .mhead .mb{background:#3b82f6}
+  .app3d .row{display:flex;align-items:center;gap:8px;padding:7px 8px;border:1px solid var(--line);border-radius:8px}
+  .app3d .row .tag{width:28px;height:12px;border-radius:4px;flex-shrink:0}
+  .app3d .row .ln{flex:1;height:6px;border-radius:3px;background:#e6e8f3}
+  .app3d .row .pct{width:22px;height:12px;border-radius:4px;flex-shrink:0}
+  .app3d .mfoot{margin-top:auto;display:flex;align-items:center;justify-content:flex-end;gap:5px}
+  .app3d .mfoot .pg{width:16px;height:11px;border-radius:4px;background:var(--bg);border:1px solid var(--line)}
+  .toc-visual .fchip{position:absolute;background:#fff;border:1px solid var(--line);border-radius:999px;padding:7px 13px;font-size:12.5px;font-weight:800;color:var(--ink);box-shadow:var(--shadow-sm);display:flex;align-items:center;gap:7px;animation:floaty 4s ease-in-out infinite;z-index:5}
+  .toc-visual .fchip i{width:8px;height:8px;border-radius:50%}
+  @keyframes floaty{0%,100%{transform:translateY(0)}50%{transform:translateY(-11px)}}
+
+  /* === team === */
+  .team-grid{grid-template-columns:repeat(4,1fr);margin-top:8px}
+  .member{padding:30px 24px;text-align:center;position:relative;overflow:hidden;transition:.3s}
+  .member:hover{transform:translateY(-6px);box-shadow:var(--shadow)}
+  .member .ava{width:84px;height:84px;border-radius:50%;margin:0 auto 18px;display:grid;place-items:center;font-size:30px;font-weight:800;color:#fff}
+  .member .nm{font-size:22px;font-weight:800}
+  .member .role{margin-top:8px;font-size:13px;font-weight:700;color:var(--accent);background:var(--accent-soft);padding:5px 12px;border-radius:999px;display:inline-block}
+  .member .lead-badge{position:absolute;top:14px;right:14px;font-size:13px;font-weight:800;color:#fff;background:linear-gradient(135deg,var(--amber),#f97316);padding:4px 11px;border-radius:999px;box-shadow:var(--shadow-sm)}
+  .member .desc{margin-top:14px;font-size:13px;color:var(--ink-3);line-height:1.5}
+
+  /* === topic / overview === */
+  .topic-wrap{flex:1;display:flex;flex-direction:column;gap:16px;min-height:0}
+  /* problem → solution hero */
+  .ps-hero{position:relative;display:grid;grid-template-columns:1fr 1fr;align-items:stretch;gap:0;overflow:hidden}
+  .ps{padding:22px 30px;display:flex;flex-direction:column;justify-content:center;gap:9px}
+  .ps.prob{background:linear-gradient(120deg,#fff7f4,#ffeef0);padding-right:44px}
+  .ps.sol{background:linear-gradient(120deg,#eef0ff,#e7e9ff);padding-left:44px}
+  .ps-tag{display:inline-flex;align-items:center;gap:7px;width:fit-content;font-size:13px;font-weight:800;letter-spacing:.04em;padding:5px 12px;border-radius:999px}
+  .ps-tag.p{background:var(--rose-soft);color:var(--rose)}
+  .ps-tag.s{background:var(--accent-soft);color:var(--accent)}
+  .ps p{font-size:15.5px;line-height:1.55;color:var(--ink-2);font-weight:500}
+  .ps p b{color:var(--ink);font-weight:800}
+  .ps-arrow{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:3}
+  .ps-arrow span{width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#fff;display:grid;place-items:center;font-size:22px;font-weight:800;box-shadow:0 10px 24px -6px rgba(99,102,241,.7);border:3px solid #fff}
+  /* value cards */
+  .val-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;flex:1;min-height:0}
+  .val{padding:18px 18px 16px;display:flex;flex-direction:column;gap:9px;position:relative;overflow:hidden;transition:transform .25s,box-shadow .25s;cursor:default}
+  .val:hover{transform:translateY(-5px);box-shadow:var(--shadow)}
+  .val .ic{width:44px;height:44px;border-radius:13px;display:grid;place-items:center;font-size:22px}
+  .val h4{font-size:16px;font-weight:800;line-height:1.3}
+  .val p{font-size:12.5px;color:var(--ink-2);line-height:1.5;font-weight:500}
+  .val .tag{font-size:12px;font-weight:700;color:var(--ink-3);padding-top:9px;border-top:1px dashed var(--line)}
+  .val .hint{position:absolute;top:14px;right:15px;font-size:12px;font-weight:700;color:var(--ink-3);opacity:0;transition:opacity .25s}
+  .val:hover .hint{opacity:.7}
+  /* wide interactive visual; fills the middle so desc sits just above the tag */
+  .vviz{flex:1;display:flex;align-items:center;justify-content:center;min-height:0;padding:6px 2px}
+
+  /* card1 — rule scan matrix */
+  .vz-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;width:100%}
+  .vz-grid .t{display:flex;align-items:center;gap:7px;background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:8px 10px;font-size:12.5px;font-weight:700;color:var(--ink-2);transition:background .3s,border-color .3s}
+  .vz-grid .t .dot{margin-left:auto;width:18px;height:18px;border-radius:50%;background:var(--line);color:#fff;display:grid;place-items:center;font-size:12px;font-weight:800;transition:background .3s,transform .3s}
+  .val:hover .vz-grid .t{background:var(--mint-soft);border-color:#a7f3c4}
+  .val:hover .vz-grid .t .dot{background:var(--mint);transform:scale(1.12)}
+  .vz-grid .t:nth-child(1){transition-delay:.05s}.vz-grid .t:nth-child(1) .dot{transition-delay:.05s}
+  .vz-grid .t:nth-child(2){transition-delay:.18s}.vz-grid .t:nth-child(2) .dot{transition-delay:.18s}
+  .vz-grid .t:nth-child(3){transition-delay:.31s}.vz-grid .t:nth-child(3) .dot{transition-delay:.31s}
+  .vz-grid .t:nth-child(4){transition-delay:.44s}.vz-grid .t:nth-child(4) .dot{transition-delay:.44s}
+
+  /* card2 — remaining-count gauge */
+  .vz-gauge{width:100%;display:flex;flex-direction:column;gap:10px}
+  .vz-gauge .track{width:100%;height:18px;border-radius:9px;background:var(--line);overflow:hidden;position:relative}
+  .vz-gauge .fill{position:absolute;inset:0;width:100%;background:linear-gradient(90deg,#34d977,#16a34a);border-radius:9px;transition:width .2s}
+  .val:hover .vz-gauge .fill{animation:drainW 1.7s .1s forwards}
+  @keyframes drainW{0%{width:100%}100%{width:0%}}
+  .vz-gauge .lab{display:flex;justify-content:space-between;align-items:center;font-size:12.5px;font-weight:800}
+  .vz-gauge .lab .a{color:#15803d}
+  .vz-gauge .lab .e{color:var(--rose);opacity:.4;transition:opacity .3s}
+  .val:hover .vz-gauge .lab .e{animation:fadeIn .4s 1.6s both}
+  .val:hover .vz-gauge .lab .a{animation:fadeOut .4s 1.5s both}
+
+  /* card3 — calendar fill */
+  .vz-cal{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;width:100%}
+  .vz-cal i{aspect-ratio:1;border-radius:5px;background:var(--bg);border:1px solid var(--line)}
+  .vz-cal i.on{background:var(--accent-soft);border-color:#d4c9ff}
+  .val:hover .vz-cal i.on{animation:pop .45s both}
+  .vz-cal i.on:nth-of-type(1){animation-delay:.1s}.vz-cal i.on:nth-of-type(2){animation-delay:.25s}
+  .vz-cal i.on:nth-of-type(3){animation-delay:.4s}.vz-cal i.on:nth-of-type(4){animation-delay:.55s}
+  .vz-cal i.on:nth-of-type(5){animation-delay:.7s}.vz-cal i.on:nth-of-type(6){animation-delay:.85s}
+
+  /* card4 — role toggle */
+  .vz-seg{width:100%;background:var(--bg);border:1px solid var(--line);border-radius:11px;padding:5px;display:flex;position:relative}
+  .vz-seg .knob{position:absolute;top:5px;bottom:5px;left:5px;width:calc(50% - 5px);border-radius:8px;background:var(--surface);box-shadow:var(--shadow-sm);transition:left .45s cubic-bezier(.16,.84,.44,1)}
+  .val:hover .vz-seg .knob{left:calc(50%)}
+  .vz-seg .opt{flex:1;text-align:center;font-size:12.5px;font-weight:800;padding:9px 0;z-index:1;color:var(--ink-3);transition:color .3s}
+  .vz-seg .opt.u{color:var(--sky)}
+  .val:hover .vz-seg .opt.u{color:var(--ink-3)}
+  .val:hover .vz-seg .opt.a{color:var(--accent)}
+  /* stat strip */
+  .stat-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+  .stat{display:flex;align-items:center;gap:14px;padding:14px 20px}
+  .stat .n{font-size:34px;font-weight:800;line-height:1;background:linear-gradient(120deg,var(--accent),var(--accent-2));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .stat .l{font-size:13px;color:var(--ink-2);font-weight:700;line-height:1.35}
+
+  /* === ERD diagram === */
+  .erd-wrap{flex:1;display:flex;flex-direction:column;gap:12px;min-height:0}
+  .erd-canvas{position:relative;flex:1;min-height:0}
+  .erd-lines{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:1;overflow:visible}
+  .erd-lines path.edge{fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;opacity:0;transition:opacity .12s ease,stroke-width .12s ease}
+  .erd-lines path.edge.show{opacity:.7}
+  .erd-lines path.edge.opt{stroke-dasharray:5 5}
+  .erd-lines path.head{stroke:none;opacity:0;transition:opacity .12s ease}
+  .erd-lines path.head.show{opacity:.85}
+  .erd-lines .lbl{opacity:0;transition:opacity .12s ease}
+  .erd-lines .lbl.show{opacity:1}
+  .erd-lines .lbl rect{fill:#fff;stroke:var(--line);stroke-width:1}
+  .erd-lines .lbl text{font-size:12px;font-weight:800;font-family:inherit}
+  .node{position:absolute;width:206px;background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow-sm);z-index:2;overflow:hidden;cursor:default;transition:box-shadow .15s,transform .15s,opacity .12s ease,filter .12s ease}
+  .node.pop{animation:nodePop .5s both}
+  .node.erd-hide{opacity:0;transform:translateY(8px) scale(.97);pointer-events:none}
+  @keyframes nodePop{from{opacity:0;transform:translateY(12px) scale(.96)}to{opacity:1;transform:none}}
+  .node:hover{box-shadow:var(--shadow);z-index:5;transform:translateY(-2px)}
+  /* dbdiagram-style hover focus */
+  .node.dim{opacity:.3;filter:grayscale(.55)}
+  .node.lit{box-shadow:0 16px 38px -10px rgba(99,102,241,.5);z-index:7;transform:translateY(-2px)}
+  .node.lit .nh{filter:saturate(1.15)}
+  .erd-lines path.edge.edim,.erd-lines path.head.edim,.erd-lines .lbl.edim{opacity:.07!important}
+  .erd-lines path.edge.elit{opacity:1!important;stroke-width:3}
+  .erd-lines path.head.elit{opacity:1!important}
+  .erd-lines .lbl.elit{opacity:1!important}
+  .node .nh{padding:6px 11px;color:#fff;font-weight:800;font-size:13px;display:flex;align-items:center;gap:7px;white-space:nowrap}
+  .node .nh .ko{font-size:12px;font-weight:600;opacity:.92;margin-left:auto;white-space:nowrap}
+  .node ul{list-style:none;padding:5px 11px 4px;display:flex;flex-direction:column;gap:3px}
+  .node li{font-size:12px;display:flex;align-items:center;gap:6px;color:var(--ink-2);font-weight:600;white-space:nowrap}
+  .node li .nm{color:var(--ink);font-weight:700}
+  .node li .ty{margin-left:auto;font-size:12px;color:var(--ink-3);font-weight:600}
+  .node .more{font-size:12px;color:var(--ink-3);font-weight:600;padding:0 11px 6px}
+  .k{font-size:12px;font-weight:800;min-width:22px;text-align:center;border-radius:5px;padding:0 4px;flex-shrink:0}
+  .k.pk{background:#fef0c7;color:#b45309}
+  .k.fk{background:var(--accent-soft);color:var(--accent)}
+  .k.uq{background:var(--mint-soft);color:#15803d}
+  .erd-foot{display:flex;align-items:center;gap:9px;flex-wrap:wrap;background:var(--surface);border:1px solid var(--line);border-radius:13px;padding:9px 15px;box-shadow:var(--shadow-sm)}
+  .cstr{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;font-weight:700;color:var(--ink-2)}
+  .cstr b{color:var(--ink);font-weight:800}
+  .cstr .ci{font-size:14px}
+  .erd-foot .sep{width:1px;height:18px;background:var(--line)}
+  .erd-foot .legend{margin-left:auto;display:flex;gap:11px;font-size:12.5px;font-weight:700;color:var(--ink-2);align-items:center}
+  .erd-foot .legend span{display:inline-flex;align-items:center;gap:5px}
+  .crd{display:inline-flex;align-items:center;gap:4px;font-weight:800;color:var(--accent)}
+  .crd .o{width:19px;height:19px;border-radius:50%;border:1.6px solid var(--accent);font-size:12px;display:grid;place-items:center;background:#fff}
+  .crd .ln{width:16px;height:0;border-top:1.8px solid var(--accent)}
+
+  /* === description : flow === */
+  .desc-wrap{flex:1;display:flex;flex-direction:column;gap:18px;min-height:0}
+  .flow{display:grid;grid-template-columns:repeat(2,1fr);gap:18px;flex:1;min-height:0}
+  .flow-col{display:flex;flex-direction:column}
+  .flow-col h3{font-size:17px;font-weight:800;margin-bottom:12px;display:flex;align-items:center;gap:10px}
+  .flow-col h3 .tag{font-size:12px;font-weight:800;padding:4px 11px;border-radius:8px}
+  .flow-card{padding:10px 22px;flex:1;display:flex;flex-direction:column;justify-content:space-evenly}
+  .step{display:flex;gap:13px;padding:8px 0;border-bottom:1px dashed var(--line)}
+  .step:last-child{border-bottom:none}
+  .step .no{flex-shrink:0;width:26px;height:26px;border-radius:8px;font-weight:800;font-size:13px;display:grid;place-items:center}
+  .step.u .no{background:var(--sky-soft);color:var(--sky)}
+  .step.a .no{background:var(--accent-soft);color:var(--accent)}
+  .step .st h4{font-size:15px;font-weight:700;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .step .st h4 .mini{font-size:12px;font-weight:800;padding:1px 7px;border-radius:5px;background:var(--bg);color:var(--ink-2);border:1px solid var(--line)}
+  .step .st p{font-size:13px;color:var(--ink-3);margin-top:2px;line-height:1.45}
+  .rules{display:flex;gap:12px}
+  .rule{flex:1;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 15px;box-shadow:var(--shadow-sm);display:flex;flex-direction:column;gap:6px}
+  .rule .ri{font-size:20px}
+  .rule h5{font-size:13.5px;font-weight:800;color:var(--ink)}
+  .rule p{font-size:12.5px;color:var(--ink-3);line-height:1.4;font-weight:500}
+  .rules-head{font-size:14px;font-weight:800;color:var(--ink);margin-bottom:-4px;display:flex;align-items:center;gap:8px}
+  /* status-transition badges (description bottom) */
+  .sflow{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-top:6px}
+  .sb{font-size:12px;font-weight:800;padding:4px 10px;border-radius:7px}
+  .sa{color:var(--ink-3);font-weight:800;font-size:13px}
+  .sb.cf{background:var(--sky-soft);color:var(--sky)}
+  .sb.cx{background:#f1f1f1;color:var(--ink-3)}
+  .sb.pn{background:var(--amber-soft);color:var(--amber)}
+  .sb.at{background:var(--mint-soft);color:#15803d}
+  .sb.ab{background:var(--rose-soft);color:var(--rose)}
+  .sb.ac{background:var(--mint-soft);color:#15803d}
+  .sb.ex{background:#f1f1f1;color:var(--ink-3)}
+
+  /* description — interactive tabs + pipeline */
+  .desc-tabs{display:flex;gap:11px}
+  .desc-tab{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:11px 20px;cursor:pointer;font-weight:800;font-size:15px;color:var(--ink-2);box-shadow:var(--shadow-sm);transition:transform .2s,box-shadow .2s}
+  .desc-tab:hover{transform:translateY(-2px)}
+  .desc-tab .ti{font-size:19px}
+  .desc-tab .tg{font-size:12px;font-weight:800;padding:3px 10px;border-radius:7px;background:var(--bg);color:var(--ink-3);border:1px solid var(--line)}
+  .desc-tab.active{color:#fff;border-color:transparent}
+  .desc-tab.active.u{background:linear-gradient(135deg,#3b82f6,#0ea5e9)}
+  .desc-tab.active.a{background:linear-gradient(135deg,var(--accent),var(--accent-2))}
+  .desc-tab.active .tg{background:rgba(255,255,255,.25);color:#fff;border-color:transparent}
+  .dpanels{flex:1;position:relative;min-height:0}
+  .dpanel{position:absolute;inset:0;display:none;align-items:center}
+  .dpanel.on{display:flex}
+  .pipe{display:flex;align-items:stretch;gap:0;width:100%}
+  .pstep{flex:1;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px 15px;box-shadow:var(--shadow-sm);display:flex;flex-direction:column;gap:9px;opacity:0}
+  .dpanel.on .pstep{animation:slideUp .45s both}
+  .pstep .pn{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;font-weight:800;font-size:14px}
+  .pstep.u .pn{background:var(--sky-soft);color:var(--sky)}
+  .pstep.a .pn{background:var(--accent-soft);color:var(--accent)}
+  .pstep h4{font-size:14.5px;font-weight:800;line-height:1.3}
+  .pstep .mini{display:inline-block;font-size:12px;font-weight:800;padding:1px 7px;border-radius:5px;background:var(--bg);color:var(--ink-2);border:1px solid var(--line);margin-top:3px}
+  .pstep p{font-size:12.5px;color:var(--ink-3);line-height:1.45;font-weight:500;margin-top:auto}
+  .parrow{display:flex;align-items:center;color:#c2c7e0;font-size:22px;font-weight:800;padding:0 6px}
+  @keyframes slideUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
+
+  /* === highlights (interactive 1:2) === */
+  .hl2{flex:1;display:grid;grid-template-columns:1fr 2fr;gap:18px;min-height:0}
+  .hl-list{display:flex;flex-direction:column;gap:10px;min-height:0}
+  .hl-item{flex:1;display:flex;align-items:center;gap:13px;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:11px 15px;box-shadow:var(--shadow-sm);cursor:pointer;transition:transform .2s,box-shadow .2s,border-color .2s;position:relative;overflow:hidden}
+  .hl-item:hover{transform:translateX(3px)}
+  .hl-item.active{border-color:transparent;box-shadow:0 14px 30px -12px rgba(99,102,241,.5)}
+  .hl-item.active::before{content:"";position:absolute;inset:0;background:linear-gradient(110deg,var(--accent-soft),#fff 80%);z-index:0}
+  .hl-item>*{position:relative;z-index:1}
+  .hl-item .hi{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;font-size:22px;flex-shrink:0}
+  .hl-item .ht h4{font-size:15px;font-weight:800;line-height:1.25}
+  .hl-item .ht span{font-size:12px;color:var(--ink-3);font-weight:700}
+  .hl-item .idx{margin-left:auto;font-size:13px;font-weight:800;color:var(--ink-3)}
+  .hl-item.active .idx{color:var(--accent)}
+
+  .hl-stage{position:relative;background:linear-gradient(160deg,#fff,#f3f4ff);border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow-sm);overflow:hidden;min-height:0}
+  .stage{position:absolute;inset:0;display:none;flex-direction:column;padding:28px 32px}
+  .stage.on{display:flex}
+  .stage .stitle{font-size:19px;font-weight:800;display:flex;align-items:center;gap:10px}
+  .stage .stitle .si{width:38px;height:38px;border-radius:11px;display:grid;place-items:center;font-size:20px}
+  .stage .sdesc{font-size:13.5px;color:var(--ink-2);font-weight:500;line-height:1.5;margin:8px 0 0}
+  .stage .viz{flex:1;display:flex;align-items:center;justify-content:center;min-height:0;padding:8px 0}
+  .stage.on .stitle{animation:rise .5s both}
+  .stage.on .sdesc{animation:rise .5s .06s both}
+
+  /* shared motion */
+  @keyframes pop{from{opacity:0;transform:scale(.6)}to{opacity:1;transform:scale(1)}}
+  @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+  @keyframes fadeOut{from{opacity:1}to{opacity:0}}
+  @keyframes slideIn{from{opacity:0;transform:translateX(-16px)}to{opacity:1;transform:none}}
+
+  /* stage1 — validation gates */
+  .v-gate{display:flex;flex-direction:column;gap:9px;width:100%;max-width:430px}
+  .v-gate .vrow{display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--line);border-radius:11px;padding:10px 15px;font-size:14px;font-weight:700;color:var(--ink);opacity:0}
+  .v-gate .vrow .vok{margin-left:auto;width:22px;height:22px;border-radius:50%;background:var(--mint);color:#fff;display:grid;place-items:center;font-size:13px;font-weight:800}
+  .stage.on .v-gate .vrow{animation:slideIn .4s both}
+  .stage.on .v-gate .vrow:nth-child(1){animation-delay:.15s}
+  .stage.on .v-gate .vrow:nth-child(2){animation-delay:.3s}
+  .stage.on .v-gate .vrow:nth-child(3){animation-delay:.45s}
+  .stage.on .v-gate .vrow:nth-child(4){animation-delay:.6s}
+  .stage.on .v-gate .vrow:nth-child(5){animation-delay:.75s}
+  .v-gate .vstamp{margin:8px auto 0;background:linear-gradient(135deg,var(--mint),#10b981);color:#fff;font-weight:800;font-size:15px;padding:9px 22px;border-radius:11px;opacity:0;box-shadow:0 12px 26px -8px rgba(34,197,94,.6)}
+  .stage.on .v-gate .vstamp{animation:stamp .55s 1s both}
+  @keyframes stamp{0%{opacity:0;transform:scale(1.6)}55%{opacity:1;transform:scale(.93)}100%{opacity:1;transform:scale(1)}}
+
+  /* stage2 — membership counter pills */
+  .v-cnt{display:flex;flex-direction:column;align-items:center;gap:20px}
+  .v-cnt .cl{font-size:13px;font-weight:700;color:var(--ink-2)}
+  .v-cnt .pills{display:flex;gap:11px}
+  .v-cnt .pl{width:38px;height:52px;border-radius:10px;background:linear-gradient(160deg,#34d977,#16a34a);box-shadow:0 8px 18px -8px rgba(34,197,94,.7)}
+  .stage.on .v-cnt .pl{animation:drain .5s both}
+  .stage.on .v-cnt .pl:nth-child(1){animation-delay:.6s}
+  .stage.on .v-cnt .pl:nth-child(2){animation-delay:1s}
+  .stage.on .v-cnt .pl:nth-child(3){animation-delay:1.4s}
+  .stage.on .v-cnt .pl:nth-child(4){animation-delay:1.8s}
+  .stage.on .v-cnt .pl:nth-child(5){animation-delay:2.2s}
+  @keyframes drain{to{background:var(--bg);box-shadow:none;transform:scale(.86)}}
+  .v-cnt .stat{position:relative;height:34px;width:150px}
+  .v-cnt .stat .b{position:absolute;inset:0;border-radius:9px;display:grid;place-items:center;font-size:14px;font-weight:800}
+  .v-cnt .stat .act{background:var(--mint-soft);color:#15803d}
+  .v-cnt .stat .exp{background:var(--rose-soft);color:var(--rose);opacity:0}
+  .stage.on .v-cnt .stat .act{animation:fadeOut .4s 2.5s both}
+  .stage.on .v-cnt .stat .exp{animation:fadeIn .45s 2.6s both}
+
+  /* stage3 — schedule → sessions */
+  .v-gen{display:flex;align-items:center;gap:18px;width:100%}
+  .v-gen .src{flex-shrink:0;background:var(--surface);border:1px solid var(--line);border-radius:13px;padding:14px 16px;text-align:center;box-shadow:var(--shadow-sm)}
+  .v-gen .src .st{font-size:12.5px;font-weight:800;color:var(--ink-2);margin-bottom:8px}
+  .v-gen .src .days{display:flex;gap:5px}
+  .v-gen .src .day{width:26px;height:26px;border-radius:7px;background:var(--accent-soft);color:var(--accent);font-size:12px;font-weight:800;display:grid;place-items:center}
+  .v-gen .arr{font-size:24px;color:var(--accent);font-weight:800}
+  .v-gen .grid2{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;flex:1}
+  .v-gen .sess{height:38px;border-radius:9px;background:linear-gradient(150deg,#efe9ff,#e3dbff);border:1px solid #d4c9ff;color:#7c3aed;font-size:12px;font-weight:800;display:grid;place-items:center;opacity:0}
+  .stage.on .v-gen .sess{animation:pop .4s both}
+
+  /* stage4 — attendance roster */
+  .v-att{width:100%;max-width:450px;display:flex;flex-direction:column;gap:9px}
+  .v-att .arow{display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--line);border-radius:11px;padding:10px 15px;opacity:0}
+  .stage.on .v-att .arow{animation:slideIn .4s both}
+  .stage.on .v-att .arow:nth-child(1){animation-delay:.15s}
+  .stage.on .v-att .arow:nth-child(2){animation-delay:.3s}
+  .stage.on .v-att .arow:nth-child(3){animation-delay:.45s}
+  .stage.on .v-att .arow:nth-child(4){animation-delay:.6s}
+  .v-att .arow .av{width:30px;height:30px;border-radius:50%;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;font-size:13px;font-weight:800}
+  .v-att .arow .nm{font-size:14px;font-weight:700}
+  .v-att .arow .bdg{margin-left:auto;position:relative;width:92px;height:26px}
+  .v-att .bdg .b{position:absolute;inset:0;border-radius:8px;display:grid;place-items:center;font-size:12px;font-weight:800}
+  .v-att .bdg .pend{background:var(--amber-soft);color:var(--amber)}
+  .v-att .bdg .att{background:var(--mint-soft);color:#15803d;opacity:0}
+  .v-att .bdg .abs{background:var(--rose-soft);color:var(--rose);opacity:0}
+  .stage.on .v-att .arow .pend{animation:fadeOut .4s both}
+  .stage.on .v-att .arow:nth-child(1) .pend{animation-delay:.9s}
+  .stage.on .v-att .arow:nth-child(2) .pend{animation-delay:1.2s}
+  .stage.on .v-att .arow:nth-child(3) .pend{animation-delay:1.5s}
+  .stage.on .v-att .arow:nth-child(4) .pend{animation-delay:1.8s}
+  .stage.on .v-att .arow .att,.stage.on .v-att .arow .abs{animation:fadeIn .45s both}
+  .stage.on .v-att .arow:nth-child(1) .att{animation-delay:.95s}
+  .stage.on .v-att .arow:nth-child(2) .att{animation-delay:1.25s}
+  .stage.on .v-att .arow:nth-child(3) .abs{animation-delay:1.55s}
+  .stage.on .v-att .arow:nth-child(4) .att{animation-delay:1.85s}
+
+  /* stage5 — dual integrity */
+  .v-guard{display:flex;flex-direction:column;align-items:center;gap:13px;width:100%;max-width:380px}
+  .v-guard .token{background:linear-gradient(135deg,var(--rose),#ec4899);color:#fff;font-size:13px;font-weight:800;padding:9px 18px;border-radius:11px;box-shadow:0 12px 26px -8px rgba(239,68,68,.6)}
+  .stage.on .v-guard .token{animation:drop 1.6s both}
+  @keyframes drop{0%{opacity:0;transform:translateY(-30px)}25%{opacity:1;transform:translateY(0)}45%{transform:translateY(0)}55%{transform:translateX(-7px)}65%{transform:translateX(7px)}75%{transform:translateX(-5px)}85%,100%{transform:translateX(0)}}
+  .v-guard .layer{width:100%;border-radius:13px;padding:14px;text-align:center;font-weight:800;font-size:14px;border:2px solid;display:flex;flex-direction:column;gap:3px}
+  .v-guard .layer small{font-size:12px;font-weight:600;opacity:.8}
+  .v-guard .layer.app{border-color:#93c5fd;background:var(--sky-soft);color:var(--sky)}
+  .v-guard .layer.db{border-color:#86efac;background:var(--mint-soft);color:#15803d}
+  .stage.on .v-guard .layer{animation:flash .5s both}
+  .stage.on .v-guard .layer.app{animation-delay:.5s}
+  .stage.on .v-guard .layer.db{animation-delay:.9s}
+  @keyframes flash{0%{transform:scale(1)}40%{transform:scale(1.04)}100%{transform:scale(1)}}
+  .v-guard .blocked{font-size:13px;font-weight:800;color:var(--rose);opacity:0}
+  .stage.on .v-guard .blocked{animation:stamp .5s 1.4s both}
+
+  /* stage6 — history log */
+  .v-log{width:100%;max-width:470px;display:flex;flex-direction:column;gap:6px}
+  .v-log .lrow{display:grid;grid-template-columns:1.5fr .8fr .8fr;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--line);border-radius:9px;padding:9px 14px;font-size:13px;font-weight:700;opacity:0}
+  .v-log .lhead{background:transparent;border:none;color:var(--ink-3);font-size:12px;padding:2px 14px;opacity:1}
+  .v-log .pos{color:var(--mint);font-weight:800}
+  .v-log .neg{color:var(--rose);font-weight:800}
+  .v-log .bal{color:var(--ink);font-weight:800;text-align:right}
+  .stage.on .v-log .lrow{animation:slideIn .4s both}
+  .stage.on .v-log .lrow:nth-child(2){animation-delay:.2s}
+  .stage.on .v-log .lrow:nth-child(3){animation-delay:.5s}
+  .stage.on .v-log .lrow:nth-child(4){animation-delay:.8s}
+  .stage.on .v-log .lrow:nth-child(5){animation-delay:1.1s}
+
+  /* === requirements === */
+  .req2{flex:1;display:grid;grid-template-columns:1.5fr 1fr;gap:0;min-height:0}
+  .req-left{display:flex;flex-direction:column;min-height:0;padding-right:26px}
+  .req-side{display:flex;flex-direction:column;gap:12px;min-height:0;padding-left:26px;border-left:1.5px dashed var(--line)}
+  .rq-sec-t{font-size:14px;font-weight:800;color:var(--ink);display:flex;align-items:center;gap:9px;margin-bottom:11px}
+  .rq-sec-t .tag{font-size:12px;font-weight:800;padding:3px 10px;border-radius:7px}
+  .rule-list{display:flex;flex-direction:column;gap:9px;flex:1;min-height:0}
+  .rl{flex:1;display:flex;align-items:center;gap:15px;background:var(--surface);border:1px solid var(--line);border-radius:13px;padding:0 18px 0 23px;box-shadow:var(--shadow-sm);position:relative;overflow:hidden;transition:transform .2s,box-shadow .2s}
+  .rl:hover{transform:translateX(5px);box-shadow:var(--shadow)}
+  .rl::before{content:"";position:absolute;left:0;top:0;bottom:0;width:5px}
+  .rl .rnum{font-size:18px;font-weight:800;color:var(--line);flex-shrink:0;width:18px}
+  .rl .ic{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;font-size:21px;flex-shrink:0}
+  .rl .rtx{flex:1;min-width:0}
+  .rl .rtx h4{font-size:15px;font-weight:800;line-height:1.2}
+  .rl .rtx p{font-size:12.5px;color:var(--ink-2);line-height:1.4;margin-top:3px;font-weight:500}
+  .rl .rtx p b{color:var(--ink);font-weight:700}
+  .rl .code{flex-shrink:0;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;font-weight:700;padding:6px 11px;border-radius:8px;white-space:nowrap}
+  .rl.cr::before{background:var(--rose)}    .rl.cr .code{color:var(--rose);background:var(--rose-soft)}
+  .rl.cm::before{background:var(--mint)}    .rl.cm .code{color:#15803d;background:var(--mint-soft)}
+  .rl.ca::before{background:var(--amber)}   .rl.ca .code{color:#b45309;background:var(--amber-soft)}
+  .rl.cs::before{background:var(--sky)}     .rl.cs .code{color:var(--sky);background:var(--sky-soft)}
+  .rl.ci::before{background:var(--accent)}  .rl.ci .code{color:var(--accent);background:var(--accent-soft)}
+  .auth-card{background:linear-gradient(135deg,#f5f6ff,#eef0ff);border:1px solid var(--line);border-radius:14px;padding:8px 16px;box-shadow:var(--shadow-sm);flex:0 0 auto}
+  .auth-row{display:flex;align-items:center;gap:12px;font-size:13.5px;font-weight:600;color:var(--ink-2);padding:9px 0}
+  .auth-row + .auth-row{border-top:1px dashed rgba(99,102,241,.2)}
+  .auth-row .ai{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;font-size:17px;flex-shrink:0;background:var(--surface)}
+  .auth-row b{color:var(--ink);font-weight:800}
+  .role-box{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:13px 17px;box-shadow:var(--shadow-sm);flex:1;display:flex;flex-direction:column;min-height:0}
+  .role-box .rt{font-size:14px;font-weight:800;display:flex;align-items:center;gap:8px;margin-bottom:8px}
+  .role-box .rt .tag{font-size:12px;font-weight:800;padding:3px 9px;border-radius:7px}
+  .role-box .rt .cnt{margin-left:auto;font-size:12px;color:var(--ink-3);font-weight:700}
+  .role-list{display:flex;flex-direction:column;gap:4px;flex:1;justify-content:space-evenly}
+  .role-list .ri2{display:flex;align-items:center;gap:10px;font-size:13px;font-weight:600;color:var(--ink-2)}
+  .role-list .ri2 .b{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+  .role-box.adm .ri2 .b{background:var(--accent)}
+  .role-box.usr .ri2 .b{background:var(--sky)}
+
+  /* === collaboration === */
+  .collab-wrap{flex:1;display:flex;flex-direction:column;gap:16px;min-height:0}
+  .gh-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+  .gh-stat{display:flex;align-items:center;gap:14px;padding:16px 20px}
+  .gh-stat .gi{font-size:26px}
+  .gh-stat .n{font-size:30px;font-weight:800;line-height:1;background:linear-gradient(120deg,var(--accent),var(--accent-2));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .gh-stat .l{font-size:13px;color:var(--ink-2);font-weight:700;margin-top:3px}
+  .gh-flow{flex:1;display:flex;flex-direction:column;justify-content:center;gap:13px}
+  .gh-flow .ftitle{font-size:14px;font-weight:800;color:var(--ink);display:flex;align-items:center;gap:8px}
+  .flow-row{display:flex;align-items:stretch;gap:0}
+  .gstep{flex:1;background:var(--surface);border:1px solid var(--line);border-radius:13px;padding:15px 16px;box-shadow:var(--shadow-sm);position:relative}
+  .gstep .gn{font-size:12px;font-weight:800;color:var(--accent);background:var(--accent-soft);width:fit-content;padding:2px 9px;border-radius:6px;margin-bottom:8px}
+  .gstep h4{font-size:15px;font-weight:800;display:flex;align-items:center;gap:7px}
+  .gstep p{font-size:12.5px;color:var(--ink-3);line-height:1.4;margin-top:4px;font-weight:500}
+  .gstep.off{background:repeating-linear-gradient(135deg,#f4f4f7,#f4f4f7 7px,#ececf2 7px,#ececf2 14px);border-style:dashed;opacity:.78;box-shadow:none}
+  .gstep.off h4,.gstep.off p{color:var(--ink-3);filter:grayscale(1)}
+  .gstep.off .gn{background:#e6e6ee;color:#9aa0bd}
+  .gstep.off .skip{position:absolute;top:11px;right:13px;font-size:12px;font-weight:800;color:#9aa0bd;background:#fff;border:1px solid var(--line);border-radius:6px;padding:2px 8px}
+  .gsep.off{color:#cdd1e4}
+  .gsep{display:flex;align-items:center;color:var(--ink-3);font-size:20px;font-weight:800;padding:0 8px}
+  .conv-row{display:flex;gap:12px}
+  .conv{flex:1;background:var(--surface);border:1px solid var(--line);border-radius:13px;padding:13px 16px;box-shadow:var(--shadow-sm)}
+  .conv .ct{font-size:13px;font-weight:800;margin-bottom:5px}
+  .conv code{font-size:12.5px;font-weight:700;color:var(--accent);background:var(--accent-soft);padding:2px 7px;border-radius:5px;font-family:ui-monospace,Menlo,Consolas,monospace}
+  .conv p{font-size:12.5px;color:var(--ink-3);font-weight:500;line-height:1.45;margin-top:3px}
+
+  /* github link button */
+  .gh-link{display:inline-flex;align-items:center;gap:9px;background:#1f2328;color:#fff;font-weight:700;font-size:14px;padding:11px 18px;border-radius:11px;text-decoration:none;box-shadow:var(--shadow-sm);transition:.2s}
+  .gh-link:hover{transform:translateY(-2px);box-shadow:var(--shadow);background:#000}
+  .gh-link svg{width:19px;height:19px;fill:#fff}
+  .gh-link .url{font-weight:500;opacity:.7;font-size:13px}
+
+  /* === demo video === */
+  .demo-wrap{flex:1;display:flex;flex-direction:column;gap:14px;min-height:0}
+  .demo-box{flex:1;border:2px dashed #c9cde6;border-radius:20px;background:linear-gradient(160deg,#fbfbff,#f1f2fb);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;text-align:center;min-height:0;position:relative;overflow:hidden}
+  .demo-box .play{width:84px;height:84px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent-2));display:grid;place-items:center;box-shadow:0 16px 36px -10px rgba(99,102,241,.6)}
+  .demo-box .play svg{width:34px;height:34px;fill:#fff;margin-left:5px}
+  .demo-box h3{font-size:22px;font-weight:800}
+  .demo-box p{font-size:14px;color:var(--ink-2);font-weight:500;line-height:1.6;max-width:560px}
+  .demo-box .hint{font-size:12.5px;color:var(--ink-3);font-weight:600;background:var(--surface);border:1px solid var(--line);border-radius:9px;padding:8px 14px}
+  .demo-box video,.demo-box iframe{position:absolute;inset:0;width:100%;height:100%;border:none;border-radius:18px;object-fit:cover}
+
+  /* === retrospective (per member) === */
+  .retro-grid{grid-template-columns:repeat(4,1fr);flex:1;gap:14px}
+  .retro{padding:0;display:flex;flex-direction:column;overflow:hidden}
+  .retro .rhead{padding:15px 18px;display:flex;align-items:center;gap:12px;color:#fff}
+  .retro.m1 .rhead{background:linear-gradient(135deg,#6366f1,#8b5cf6)}
+  .retro.m2 .rhead{background:linear-gradient(135deg,#3b82f6,#0ea5e9)}
+  .retro.m3 .rhead{background:linear-gradient(135deg,#22c55e,#10b981)}
+  .retro.m4 .rhead{background:linear-gradient(135deg,#8b5cf6,#a855f7)}
+  .retro .rhead .av{width:42px;height:42px;border-radius:50%;background:rgba(255,255,255,.25);display:grid;place-items:center;font-size:19px;font-weight:800;flex-shrink:0}
+  .retro .rhead h3{font-size:19px;font-weight:800;line-height:1.1}
+  .retro .rhead .sub{font-size:12px;font-weight:700;opacity:.9;margin-top:2px}
+  .retro .rbody{flex:1;padding:13px 15px;display:flex;flex-direction:column;gap:9px}
+  .retro .slot{flex:1;border:1.5px dashed #d3d7ea;border-radius:11px;padding:9px 12px;display:flex;flex-direction:column;gap:5px;background:var(--bg)}
+  .retro .slot .sl-tag{font-size:12px;font-weight:800;width:fit-content;padding:2px 8px;border-radius:6px}
+  .retro .slot .sl-tag.k{background:var(--mint-soft);color:#15803d}
+  .retro .slot .sl-tag.p{background:var(--amber-soft);color:var(--amber)}
+  .retro .slot .sl-tag.t{background:var(--accent-soft);color:var(--accent)}
+  .retro .slot .tx{font-size:12.5px;color:var(--ink-3);line-height:1.4;font-style:italic}
+  .ex-tag{display:inline-block;font-size:13px;font-weight:800;letter-spacing:.04em;color:var(--ink-3);border:1px dashed var(--ink-3);border-radius:6px;padding:4px 11px;margin-bottom:16px;text-transform:uppercase}
+
+  /* === closing === */
+  .closing{justify-content:center;align-items:center;text-align:center}
+  .closing h1{font-size:74px;font-weight:800;letter-spacing:-.03em;margin-bottom:20px}
+  .closing .lead{font-size:19px;color:var(--ink-2);max-width:none;line-height:1.7;font-weight:500}
+  .closing .team-line{margin-top:40px;display:flex;gap:12px;flex-wrap:wrap;justify-content:center}
+  .closing .pill{background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:11px 22px;font-weight:700;font-size:15px;box-shadow:var(--shadow-sm)}
+  .closing .pill.lead-pill{background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#fff;border:none}
+
+  /* color helpers */
+  .c-indigo{background:var(--accent-soft);color:var(--accent)}
+  .c-mint{background:var(--mint-soft);color:var(--mint)}
+  .c-amber{background:var(--amber-soft);color:var(--amber)}
+  .c-sky{background:var(--sky-soft);color:var(--sky)}
+  .c-rose{background:var(--rose-soft);color:var(--rose)}
+  .bg-indigo{background:linear-gradient(135deg,var(--accent),var(--accent-2))}
+  .bg-mint{background:linear-gradient(135deg,#22c55e,#10b981)}
+  .bg-amber{background:linear-gradient(135deg,#f59e0b,#f97316)}
+  .bg-sky{background:linear-gradient(135deg,#3b82f6,#0ea5e9)}
+  .bg-rose{background:linear-gradient(135deg,#ef4444,#ec4899)}
+  .bg-violet{background:linear-gradient(135deg,#8b5cf6,#a855f7)}
+  .bg-slate{background:linear-gradient(135deg,#64748b,#475569)}
+
+  @media (max-width:1100px){
+    .slide{padding:44px 40px 80px}
+    h1.title{font-size:46px}.cover .lead{font-size:18px}
+    .footer{left:40px;right:40px}
+  }
+</style>
+</head>
+<body>
+<div class="bg-deco"><div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div></div>
+<div class="progress" id="progress"></div>
+
+<div id="deck">
+
+  <!-- ════════ 1. COVER ════════ -->
+  <section class="slide cover active">
+    <div class="logo reveal d1">
+      <div class="mark">
+        <svg viewBox="0 0 128 120"><g stroke="#4338ca" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="76" cy="62" rx="18" ry="15" fill="#4338ca"/><path d="M80 62L100 44" fill="none" stroke-width="27"/></g><g stroke-linecap="round"><ellipse cx="76" cy="62" rx="18" ry="15" fill="#fff"/><path d="M80 62L100 44" fill="none" stroke="#fff" stroke-width="17"/></g><g stroke="#4338ca" stroke-width="4.5" stroke-linejoin="round"><rect x="78" y="36" width="47" height="8" rx="4" fill="#fff"/><rect x="71.5" y="29" width="11" height="22" rx="4" fill="#fff"/><rect x="116" y="29" width="11" height="22" rx="4" fill="#fff"/></g><circle cx="101" cy="42" r="12.5" fill="#4338ca"/><circle cx="101" cy="42" r="9" fill="#fff"/><path d="M46 98C12 72 8 42 28 30 40 23 47 30 48 40 49 30 56 23 68 30 88 42 84 72 46 98Z" fill="#fff" stroke="#4338ca" stroke-width="4.5" stroke-linejoin="round"/><path d="M14 58H28L34 42L43 74L49 48L54 58H74" fill="none" stroke="#6366f1" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <div class="nm">건강하조<small>HEALTHAJO</small></div>
+    </div>
+    <span class="kicker reveal d2"><span class="dot"></span>Mini Project · 2026</span>
+    <h1 class="title reveal d3">헬스장 예약·프로그램<br><span class="grad-text">관리 시스템</span></h1>
+    <p class="lead reveal d4">스피닝·요가·필라테스·골프 프로그램의 예약부터 회원권 차감, 세션·출석 관리까지<br>한 흐름으로 잇는 Java Swing 데스크톱 애플리케이션</p>
+    <div class="chips reveal d5">
+      <span class="chip"><i style="background:#6366f1"></i>Java</span>
+      <span class="chip"><i style="background:#3b82f6"></i>Java Swing</span>
+      <span class="chip"><i style="background:#22c55e"></i>MySQL 8.0.35</span>
+      <span class="chip"><i style="background:#f59e0b"></i>JDBC</span>
+    </div>
+  </section>
+
+  <!-- ════════ CONTENTS ════════ -->
+  <section class="slide">
+    <div class="slide-head reveal d1">
+      <span class="kicker"><span class="dot"></span>Contents</span>
+      <h2 class="heading" style="margin-top:14px">목차</h2>
+    </div>
+    <div class="toc-wrap">
+      <div class="toc">
+        <button class="toc-item" data-go="2"><span class="no">01</span><span class="ti">👥</span><span class="tt">팀 구성</span><span class="en">Team</span></button>
+        <button class="toc-item" data-go="3"><span class="no">02</span><span class="ti">🎯</span><span class="tt">프로젝트 주제</span><span class="en">Topic</span></button>
+        <button class="toc-item" data-go="4"><span class="no">03</span><span class="ti">📋</span><span class="tt">요구사항 정리</span><span class="en">Requirements</span></button>
+        <button class="toc-item" data-go="5"><span class="no">04</span><span class="ti">🗄️</span><span class="tt">데이터 모델 · ERD</span><span class="en">ERD</span></button>
+        <button class="toc-item" data-go="6"><span class="no">05</span><span class="ti">⚙️</span><span class="tt">프로그램 설명</span><span class="en">How it works</span></button>
+        <button class="toc-item" data-go="7"><span class="no">06</span><span class="ti">✨</span><span class="tt">특장점</span><span class="en">Highlights</span></button>
+        <button class="toc-item" data-go="8"><span class="no">07</span><span class="ti">🤝</span><span class="tt">협업 방식</span><span class="en">Collaboration</span></button>
+        <button class="toc-item" data-go="9"><span class="no">08</span><span class="ti">🎬</span><span class="tt">시연 영상</span><span class="en">Demo</span></button>
+        <button class="toc-item" data-go="10"><span class="no">09</span><span class="ti">🪞</span><span class="tt">회고</span><span class="en">Retrospective</span></button>
+      </div>
+      <div class="toc-visual reveal d3">
+        <div class="toc-stack">
+          <!-- 뒤: 회원(USER) 페이지 — 사이드바 메뉴 4개 -->
+          <div class="app3d back">
+            <div class="bar"><i></i><i></i><i></i><span class="t">건강하조 · 회원</span></div>
+            <div class="body">
+              <div class="side"><span class="sh"></span><span class="nav on"></span><span class="nav"></span><span class="nav"></span><span class="nav"></span></div>
+              <div class="main">
+                <div class="mhead"><span class="mt"></span><span class="ms"></span><span class="mb"></span></div>
+                <div class="row"><span class="tag" style="background:var(--sky-soft)"></span><span class="ln"></span><span class="pct" style="background:var(--mint-soft)"></span></div>
+                <div class="row"><span class="tag" style="background:var(--mint-soft)"></span><span class="ln"></span><span class="pct" style="background:var(--amber-soft)"></span></div>
+                <div class="row"><span class="tag" style="background:#ede9ff"></span><span class="ln"></span><span class="pct" style="background:var(--mint-soft)"></span></div>
+                <div class="mfoot"><span class="pg"></span><span class="pg"></span></div>
+              </div>
+            </div>
+          </div>
+          <!-- 앞: 관리자(ADMIN) 페이지 — 사이드바 메뉴 6개 -->
+          <div class="app3d front">
+            <div class="bar"><i></i><i></i><i></i><span class="t">건강하조 · 관리자</span></div>
+            <div class="body">
+              <div class="side"><span class="sh"></span><span class="nav on"></span><span class="nav"></span><span class="nav"></span><span class="nav"></span><span class="nav"></span><span class="nav"></span></div>
+              <div class="main">
+                <div class="mhead"><span class="mt"></span><span class="ms"></span><span class="mb"></span></div>
+                <div class="row"><span class="tag" style="background:var(--sky-soft)"></span><span class="ln"></span><span class="pct" style="background:var(--mint-soft)"></span></div>
+                <div class="row"><span class="tag" style="background:var(--amber-soft)"></span><span class="ln"></span><span class="pct" style="background:var(--mint-soft)"></span></div>
+                <div class="row"><span class="tag" style="background:#ede9ff"></span><span class="ln"></span><span class="pct" style="background:var(--rose-soft)"></span></div>
+                <div class="row"><span class="tag" style="background:var(--mint-soft)"></span><span class="ln"></span><span class="pct" style="background:var(--mint-soft)"></span></div>
+                <div class="mfoot"><span class="pg"></span><span class="pg"></span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <span class="fchip" style="top:10%;left:0;animation-delay:.2s"><i style="background:#3b82f6"></i>예약</span>
+        <span class="fchip" style="bottom:24%;left:-2%;animation-delay:1.1s"><i style="background:#22c55e"></i>회원권</span>
+        <span class="fchip" style="bottom:6%;right:8%;animation-delay:.6s"><i style="background:#8b5cf6"></i>세션</span>
+        <span class="fchip" style="top:46%;right:-4%;animation-delay:1.5s"><i style="background:#f59e0b"></i>출석</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════ 2. TEAM ════════ -->
+  <section class="slide">
+    <div class="slide-head reveal d1">
+      <span class="kicker"><span class="dot"></span>Team</span>
+      <h2 class="heading" style="margin-top:14px">팀 구성 <span class="accent">건강하조</span></h2>
+      <p class="subhead" style="margin-top:8px">4인 협업 · 도메인을 나눠 맡고, 공통 컴포넌트와 데이터 레이어를 함께 설계했습니다.</p>
+    </div>
+    <div class="grid team-grid" style="flex:1;align-content:center">
+      <div class="card member reveal d2">
+        <span class="lead-badge">팀장</span>
+        <div class="ava bg-indigo">유</div>
+        <div class="nm">유희준</div>
+        <div class="role">Team Lead</div>
+        <p class="desc">아키텍처 설계 · JDBC 코어 ·<br>인증/회원권 연동 총괄</p>
+      </div>
+      <div class="card member reveal d3">
+        <div class="ava bg-sky">최</div>
+        <div class="nm">최재웅</div>
+        <div class="role">Developer</div>
+        <p class="desc">프로그램·예약 도메인<br>기능 개발</p>
+      </div>
+      <div class="card member reveal d4">
+        <div class="ava bg-mint">정</div>
+        <div class="nm">정종찬</div>
+        <div class="role">Developer</div>
+        <p class="desc">스케줄·세션 관리<br>기능 개발</p>
+      </div>
+      <div class="card member reveal d5">
+        <div class="ava bg-violet">김</div>
+        <div class="nm">김현정</div>
+        <div class="role">Developer</div>
+        <p class="desc">회원·출석 관리<br>UI 컴포넌트</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════ 3. TOPIC / OVERVIEW ════════ -->
+  <section class="slide">
+    <div class="slide-head reveal d1">
+      <span class="kicker"><span class="dot"></span>Topic</span>
+      <h2 class="heading" style="margin-top:14px">무엇을, <span class="accent">왜</span> 만들었나요?</h2>
+      <p class="subhead" style="margin-top:8px">스피닝·요가·필라테스·골프 프로그램의 예약과 운영을 하나의 흐름으로 묶은 <b>헬스장 통합 관리 시스템</b></p>
+    </div>
+
+    <div class="topic-wrap">
+      <div class="card ps-hero reveal d2">
+        <div class="ps prob">
+          <span class="ps-tag p">🔍 Problem · 문제</span>
+          <p>프로그램·정원·회원권·취소 규칙이 서로 얽혀 있어, <b>수기·엑셀 관리</b>로는 중복 예약·정원 초과·횟수 오차가 잦고 추적이 어렵습니다.</p>
+        </div>
+        <div class="ps-arrow"><span>→</span></div>
+        <div class="ps sol">
+          <span class="ps-tag s">✨ Solution · 해결</span>
+          <p>예약 → 회원권 차감 → 세션 → 출석까지 <b>한 흐름으로 자동화</b>하고, 관리자·사용자 역할을 분리한 <b>데스크톱 앱</b>으로 풀었습니다.</p>
+        </div>
+      </div>
+
+      <div class="val-grid">
+        <div class="card val reveal d3"><div class="ic c-indigo">🎯</div><h4>얽힌 예약 규칙 검증</h4>
+          <div class="vviz"><div class="vz-grid">
+            <span class="t">정원<span class="dot">✓</span></span><span class="t">중복<span class="dot">✓</span></span>
+            <span class="t">시간<span class="dot">✓</span></span><span class="t">마감<span class="dot">✓</span></span>
+          </div></div>
+          <p>정원 초과·중복 신청·시간대 충돌·취소 마감을 한 번에 검사해 잘못된 예약을 차단합니다.</p><div class="tag">4가지 규칙 동시 검사</div></div>
+
+        <div class="card val reveal d4"><div class="ic c-mint">🎟️</div><h4>회원권 자동 관리</h4>
+          <div class="vviz"><div class="vz-gauge">
+            <div class="track"><div class="fill"></div></div>
+            <div class="lab"><span class="a">● ACTIVE</span><span class="e">● EXPIRED</span></div>
+          </div></div>
+          <p>예약 시 횟수 차감, 취소 시 복구, 0이 되면 자동 만료까지 회원권 상태를 스스로 관리합니다.</p><div class="tag">잔여 횟수에 따라 상태 전환</div></div>
+
+        <div class="card val reveal d5"><div class="ic c-amber">🗓️</div><h4>세션 일괄 자동 생성</h4>
+          <div class="vviz"><div class="vz-cal">
+            <i></i><i class="on"></i><i></i><i class="on"></i><i></i><i class="on"></i><i></i>
+            <i class="on"></i><i></i><i class="on"></i><i></i><i class="on"></i><i></i><i></i>
+          </div></div>
+          <p>주간 스케줄(운영 기간 × 요일)을 계산해 수십 개의 수업 세션을 한 번에 생성합니다.</p><div class="tag">운영기간 × 요일 자동 계산</div></div>
+
+        <div class="card val reveal d6"><div class="ic c-sky">👥</div><h4>역할 기반 운영</h4>
+          <div class="vviz"><div class="vz-seg"><div class="knob"></div><span class="opt u">👤 USER</span><span class="opt a">🛠️ ADMIN</span></div></div>
+          <p>로그인 시 USER / ADMIN으로 화면과 권한이 분기되어 사용자와 관리자가 한 앱을 함께 씁니다.</p><div class="tag">로그인 후 화면 분기</div></div>
+      </div>
+
+      <div class="stat-strip reveal d6">
+        <div class="card stat"><div class="n">9</div><div class="l">핵심 DB<br>테이블</div></div>
+        <div class="card stat"><div class="n">6</div><div class="l">관리자<br>관리 영역</div></div>
+        <div class="card stat"><div class="n">4</div><div class="l">프로그램<br>카테고리</div></div>
+        <div class="card stat"><div class="n">2</div><div class="l">사용자<br>역할</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════ 4. REQUIREMENTS ════════ -->
+  <section class="slide">
+    <div class="slide-head reveal d1">
+      <span class="kicker"><span class="dot"></span>Requirements</span>
+      <h2 class="heading" style="margin-top:14px">요구사항 <span class="accent">정리</span></h2>
+      <p class="subhead" style="margin-top:8px">서로 맞물리는 예약 규칙을 정의하고, 인증과 역할별 기능 범위를 먼저 확정했습니다.</p>
+    </div>
+    <div class="req2">
+      <div class="req-left">
+        <div class="rq-sec-t reveal d2"><span class="tag c-rose">RULES</span> 핵심 기능 요구사항 — 서로 맞물리는 6가지 규칙</div>
+        <div class="rule-list">
+          <div class="rl cr reveal d2"><span class="rnum">1</span><div class="ic c-rose">🚫</div><div class="rtx"><h4>예약 정원 초과 불가</h4><p>세션별 최대 정원을 넘는 예약 요청은 거부합니다.</p></div><span class="code">booked &lt; capacity</span></div>
+          <div class="rl cm reveal d2"><span class="rnum">2</span><div class="ic c-mint">🎟️</div><div class="rtx"><h4>횟수제 회원권 관리</h4><p>예약 시 차감·취소 시 복구, <b>0이면 예약 불가</b>·자동 만료.</p></div><span class="code">remaining ≥ 0</span></div>
+          <div class="rl ca reveal d2"><span class="rnum">3</span><div class="ic c-amber">🔁</div><div class="rtx"><h4>동일 세션 중복 예약 불가</h4><p>같은 사용자가 같은 세션에 2번 이상 예약 불가.</p></div><span class="code">UNIQUE(user,session)</span></div>
+          <div class="rl cs reveal d3"><span class="rnum">4</span><div class="ic c-sky">⏰</div><div class="rtx"><h4>시간대 중복 예약 불가</h4><p>이미 예약한 세션과 날짜·시간이 겹치면 예약 불가.</p></div><span class="code">시간 겹침 검사</span></div>
+          <div class="rl ci reveal d3"><span class="rnum">5</span><div class="ic c-indigo">🗓️</div><div class="rtx"><h4>취소 마감 준수</h4><p>취소 가능 기간이 지나면 사용자 직접 취소 불가.</p></div><span class="code">≤ 취소 마감일</span></div>
+          <div class="rl cm reveal d4"><span class="rnum">6</span><div class="ic c-mint">📜</div><div class="rtx"><h4>횟수 변동 이력 기록</h4><p>차감·복구·관리자 조정을 모두 이력으로 남겨 추적·감사.</p></div><span class="code">histories 기록</span></div>
+        </div>
+      </div>
+
+      <div class="req-side">
+        <div class="rq-sec-t reveal d3"><span class="tag c-indigo">ACCESS</span> 인증 &amp; 역할 범위</div>
+        <div class="auth-card reveal d3">
+          <div class="auth-row"><span class="ai">📱</span><span><b>사용자</b> — 전화번호 입력으로 로그인</span></div>
+          <div class="auth-row"><span class="ai">🔑</span><span><b>관리자</b> — 관리자 코드 입력으로 로그인</span></div>
+          <div class="auth-row"><span class="ai">🔀</span><span>역할(<b>USER / ADMIN</b>)에 따라 화면 분기</span></div>
+        </div>
+        <div class="role-box adm reveal d4">
+          <div class="rt"><span class="tag c-indigo">ADMIN</span> 관리자 기능<span class="cnt">6 영역</span></div>
+          <div class="role-list">
+            <span class="ri2"><span class="b"></span>회원 관리</span><span class="ri2"><span class="b"></span>프로그램 관리</span>
+            <span class="ri2"><span class="b"></span>예약 관리</span><span class="ri2"><span class="b"></span>회원권 관리</span>
+            <span class="ri2"><span class="b"></span>스케줄 관리</span><span class="ri2"><span class="b"></span>세션 · 출석 관리</span>
+          </div>
+        </div>
+        <div class="role-box usr reveal d4">
+          <div class="rt"><span class="tag c-sky">USER</span> 사용자 기능<span class="cnt">5 기능</span></div>
+          <div class="role-list">
+            <span class="ri2"><span class="b"></span>프로그램 조회</span><span class="ri2"><span class="b"></span>예약 신청</span>
+            <span class="ri2"><span class="b"></span>예약 취소</span><span class="ri2"><span class="b"></span>내 예약 현황</span>
+            <span class="ri2"><span class="b"></span>내 회원권 현황</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════ 5. ERD ════════ -->
+  <section class="slide">
+    <div class="slide-head reveal d1">
+      <span class="kicker"><span class="dot"></span>ERD</span>
+      <h2 class="heading" style="margin-top:14px">데이터 모델 <span class="accent">9 Tables</span></h2>
+    </div>
+    <div class="erd-wrap reveal d2">
+      <div class="erd-canvas" id="erdCanvas">
+        <svg class="erd-lines" id="erdLines" preserveAspectRatio="none"></svg>
+
+        <div class="node" id="n_programs" style="left:0;top:2%">
+          <div class="nh bg-sky">🏷️ programs<span class="ko">프로그램</span></div>
+          <ul>
+            <li><span class="k pk">PK</span><span class="nm">id</span></li>
+            <li><span class="nm">name</span><span class="ty">프로그램명</span></li>
+            <li><span class="nm">category</span><span class="ty">운동 종류</span></li>
+          </ul>
+          <div class="more">+ 예약 · 취소 가능 기간</div>
+        </div>
+
+        <div class="node" id="n_schedules" style="left:0;top:37%">
+          <div class="nh bg-amber">📅 program_schedules<span class="ko">스케줄</span></div>
+          <ul>
+            <li><span class="k pk">PK</span><span class="nm">id</span></li>
+            <li><span class="k fk">FK</span><span class="nm">program_id</span><span class="ty">프로그램</span></li>
+            <li><span class="nm">default_capacity</span><span class="ty">기본 정원</span></li>
+          </ul>
+          <div class="more">+ 운영기간 · 슬롯 설정</div>
+        </div>
+
+        <div class="node" id="n_weekdays" style="left:0;top:72%">
+          <div class="nh bg-amber">🗓️ schedule_weekdays<span class="ko">요일</span></div>
+          <ul>
+            <li><span class="k pk">PK</span><span class="nm">id</span></li>
+            <li><span class="k fk">FK</span><span class="nm">schedule_id</span><span class="ty">스케줄</span></li>
+            <li><span class="nm">weekday</span><span class="ty">요일 · 시각</span></li>
+          </ul>
+        </div>
+
+        <div class="node" id="n_sessions" style="left:25.5%;top:2%">
+          <div class="nh bg-violet">🎬 sessions<span class="ko">세션</span></div>
+          <ul>
+            <li><span class="k pk">PK</span><span class="nm">id</span></li>
+            <li><span class="k fk">FK</span><span class="nm">program_id</span><span class="ty">프로그램</span></li>
+            <li><span class="k fk">FK</span><span class="nm">schedule_id</span><span class="ty">스케줄</span></li>
+            <li><span class="k fk">FK</span><span class="nm">instructor_id</span><span class="ty">강사</span></li>
+            <li><span class="nm">booked / capacity</span><span class="ty">예약 / 정원</span></li>
+            <li><span class="nm">status</span><span class="ty">운영 상태</span></li>
+          </ul>
+        </div>
+
+        <div class="node" id="n_instructors" style="left:25.5%;top:40%">
+          <div class="nh bg-slate">🧑‍🏫 instructors<span class="ko">강사</span></div>
+          <ul>
+            <li><span class="k pk">PK</span><span class="nm">id</span></li>
+            <li><span class="nm">specialty</span><span class="ty">전문 종목</span></li>
+            <li><span class="nm">status</span><span class="ty">활동 여부</span></li>
+          </ul>
+        </div>
+
+        <div class="node" id="n_users" style="left:25.5%;top:72%">
+          <div class="nh bg-indigo">👤 users<span class="ko">회원</span></div>
+          <ul>
+            <li><span class="k pk">PK</span><span class="nm">id</span></li>
+            <li><span class="k uq">UQ</span><span class="nm">phone</span><span class="ty">로그인 번호</span></li>
+            <li><span class="nm">role</span><span class="ty">권한</span></li>
+          </ul>
+        </div>
+
+        <div class="node" id="n_reservations" style="left:51%;top:2%">
+          <div class="nh bg-rose">📝 reservations<span class="ko">예약</span></div>
+          <ul>
+            <li><span class="k pk">PK</span><span class="nm">id</span></li>
+            <li><span class="k fk">FK</span><span class="nm">user_id</span><span class="ty">회원</span></li>
+            <li><span class="k fk">FK</span><span class="nm">session_id</span><span class="ty">세션</span></li>
+            <li><span class="k fk">FK</span><span class="nm">membership_id</span><span class="ty">회원권</span></li>
+            <li><span class="k uq">UQ</span><span class="nm">user + session</span><span class="ty">중복 방지</span></li>
+            <li><span class="nm">status</span><span class="ty">예약 · 출석</span></li>
+          </ul>
+        </div>
+
+        <div class="node" id="n_memberships" style="left:51%;top:40%">
+          <div class="nh bg-mint">🎟️ memberships<span class="ko">회원권</span></div>
+          <ul>
+            <li><span class="k pk">PK</span><span class="nm">id</span></li>
+            <li><span class="k fk">FK</span><span class="nm">user_id</span><span class="ty">회원</span></li>
+            <li><span class="k fk">FK</span><span class="nm">program_id</span><span class="ty">프로그램</span></li>
+            <li><span class="nm">remaining_count</span><span class="ty">잔여 횟수</span></li>
+            <li><span class="nm">status</span><span class="ty">활성 여부</span></li>
+          </ul>
+        </div>
+
+        <div class="node" id="n_histories" style="left:73.5%;top:40%;width:236px">
+          <div class="nh bg-slate">📜 membership_histories<span class="ko">이력</span></div>
+          <ul>
+            <li><span class="k pk">PK</span><span class="nm">id</span></li>
+            <li><span class="k fk">FK</span><span class="nm">membership</span><span class="ty">회원권</span></li>
+            <li><span class="nm">change_type</span><span class="ty">변동 유형</span></li>
+            <li><span class="nm">change_count</span><span class="ty">변동 횟수</span></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="erd-foot reveal d3">
+        <span class="cstr"><span class="ci">🔗</span>관계선의 <b>화살표</b>가 가리키는 쪽이 N (다)</span>
+        <span class="sep"></span>
+        <span class="cstr"><b style="color:var(--ink)">───</b> 필수 (NOT NULL)</span>
+        <span class="cstr"><b style="color:var(--ink-3)">- - -</b> 선택 (NULL 허용)</span>
+        <span class="sep"></span>
+        <span class="cstr"><span class="k pk">PK</span> 기본키</span>
+        <span class="cstr"><span class="k fk">FK</span> 외래키</span>
+        <span class="cstr"><span class="k uq">UQ</span> 유니크</span>
+        <span class="sep"></span>
+        <span class="cstr"><span class="ci">✅</span><b>CHECK</b> remaining_count ≥ 0</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════ 5. DESCRIPTION ════════ -->
+  <section class="slide">
+    <div class="slide-head reveal d1">
+      <span class="kicker"><span class="dot"></span>How it works</span>
+      <h2 class="heading" style="margin-top:14px">프로그램 <span class="accent">설명</span></h2>
+      <p class="subhead" style="margin-top:8px">탭을 눌러 사용자·관리자 각각의 흐름을 단계별로 살펴보세요.</p>
+    </div>
+    <div class="desc-wrap">
+      <div class="desc-tabs reveal d2">
+        <button class="desc-tab u active" data-d="0"><span class="ti">👤</span> 사용자 예약 흐름 <span class="tg">USER</span></button>
+        <button class="desc-tab a" data-d="1"><span class="ti">🛠️</span> 관리자 운영 흐름 <span class="tg">ADMIN</span></button>
+      </div>
+
+      <div class="dpanels">
+        <div class="dpanel on" data-d="0">
+          <div class="pipe">
+            <div class="pstep u" style="animation-delay:.1s"><div class="pn">1</div><h4>로그인</h4><span class="mini">전화번호</span><p>본인 확인 후 역할 분기</p></div>
+            <div class="parrow">→</div>
+            <div class="pstep u" style="animation-delay:.22s"><div class="pn">2</div><h4>프로그램 조회</h4><span class="mini">목록·상세</span><p>유형·잔여 정원·마감일 확인</p></div>
+            <div class="parrow">→</div>
+            <div class="pstep u" style="animation-delay:.34s"><div class="pn">3</div><h4>유효성 검사</h4><span class="mini">5단계</span><p>회원권·정원·중복·충돌 검증</p></div>
+            <div class="parrow">→</div>
+            <div class="pstep u" style="animation-delay:.46s"><div class="pn">4</div><h4>예약 확정</h4><span class="mini">−1 차감</span><p>0이면 회원권 자동 만료</p></div>
+            <div class="parrow">→</div>
+            <div class="pstep u" style="animation-delay:.58s"><div class="pn">5</div><h4>내 예약 관리</h4><span class="mini">취소·복구</span><p>마감 전 취소 시 횟수 복구</p></div>
+          </div>
+        </div>
+        <div class="dpanel" data-d="1">
+          <div class="pipe">
+            <div class="pstep a" style="animation-delay:.1s"><div class="pn">1</div><h4>회원 관리</h4><span class="mini">CRUD</span><p>등록·조회·수정·삭제 + 검색·페이지네이션</p></div>
+            <div class="parrow">→</div>
+            <div class="pstep a" style="animation-delay:.22s"><div class="pn">2</div><h4>프로그램·스케줄 등록</h4><span class="mini">세션 자동생성</span><p>프로그램 등록 → 스케줄로 세션 일괄 생성·강사 배정</p></div>
+            <div class="parrow">→</div>
+            <div class="pstep a" style="animation-delay:.34s"><div class="pn">3</div><h4>회원권 발급·충전</h4><span class="mini">상태 전환</span><p>전용·범용권 발급, 수동 충전 시 ACTIVE↔EXPIRED</p></div>
+            <div class="parrow">→</div>
+            <div class="pstep a" style="animation-delay:.46s"><div class="pn">4</div><h4>예약 관리</h4><span class="mini">강제 취소</span><p>프로그램별 예약자 조회·강제 취소 시 횟수 복구</p></div>
+            <div class="parrow">→</div>
+            <div class="pstep a" style="animation-delay:.58s"><div class="pn">5</div><h4>세션·출석 관리</h4><span class="mini">출석 차감</span><p>출석 처리로 횟수 차감·세션 취소 시 일괄 복구</p></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="rules-head reveal d4">🔄 흐름에 따라 바뀌는 상태 — 예약 · 출석 · 회원권</div>
+      <div class="rules reveal d4">
+        <div class="rule"><h5>📝 예약 상태</h5><div class="sflow"><span class="sb cf">CONFIRMED</span><span class="sa">→ 취소 →</span><span class="sb cx">CANCELLED</span></div></div>
+        <div class="rule"><h5>✅ 출석 상태</h5><div class="sflow"><span class="sb pn">PENDING</span><span class="sa">→</span><span class="sb at">ATTENDED</span><span class="sb ab">ABSENT</span></div></div>
+        <div class="rule"><h5>🎟️ 회원권 상태</h5><div class="sflow"><span class="sb ac">ACTIVE</span><span class="sa">⇄ 0 / 충전 ⇄</span><span class="sb ex">EXPIRED</span></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════ 6. HIGHLIGHTS ════════ -->
+  <section class="slide">
+    <div class="slide-head reveal d1">
+      <span class="kicker"><span class="dot"></span>Highlights</span>
+      <h2 class="heading" style="margin-top:14px">우리 프로젝트의 <span class="accent">특장점</span></h2>
+    </div>
+    <p class="subhead reveal d2" style="margin-top:-18px;margin-bottom:18px">왼쪽 항목을 클릭하면 오른쪽에서 해당 기능이 어떻게 동작하는지 보여줍니다.</p>
+    <div class="hl2 reveal d2">
+      <div class="hl-list">
+        <button class="hl-item active" data-k="0"><span class="hi c-indigo">🎯</span><span class="ht"><h4>예약 규칙 통합 검증</h4><span>정원·중복·충돌·마감 한 번에</span></span><span class="idx">01</span></button>
+        <button class="hl-item" data-k="1"><span class="hi c-mint">🎟️</span><span class="ht"><h4>회원권 ↔ 예약 연동</h4><span>차감·복구·자동 만료</span></span><span class="idx">02</span></button>
+        <button class="hl-item" data-k="2"><span class="hi c-amber">🗓️</span><span class="ht"><h4>세션 자동 생성</h4><span>스케줄 한 번으로 일괄</span></span><span class="idx">03</span></button>
+        <button class="hl-item" data-k="3"><span class="hi c-sky">✅</span><span class="ht"><h4>출석 기반 횟수 관리</h4><span>출석 처리로 차감</span></span><span class="idx">04</span></button>
+        <button class="hl-item" data-k="4"><span class="hi c-rose">🛡️</span><span class="ht"><h4>이중 무결성 보장</h4><span>DB 제약 + 앱 검증</span></span><span class="idx">05</span></button>
+        <button class="hl-item" data-k="5"><span class="hi c-indigo">🛠️</span><span class="ht"><h4>운영 도구 &amp; 이력 추적</h4><span>강제취소·충전·감사</span></span><span class="idx">06</span></button>
+      </div>
+
+      <div class="hl-stage">
+        <!-- stage 0 -->
+        <div class="stage on" data-k="0">
+          <div class="stitle"><span class="si c-indigo">🎯</span>예약 규칙 통합 검증</div>
+          <p class="sdesc">하나의 예약 요청이 5단계 관문을 모두 통과해야 확정됩니다. 어느 하나라도 실패하면 거부됩니다.</p>
+          <div class="viz"><div class="v-gate">
+            <div class="vrow"><span>🎟️</span>회원권 ACTIVE · 잔여 ≥ 1<span class="vok">✓</span></div>
+            <div class="vrow"><span>👥</span>세션 정원 여유 (booked &lt; capacity)<span class="vok">✓</span></div>
+            <div class="vrow"><span>🔁</span>동일 세션 중복 아님<span class="vok">✓</span></div>
+            <div class="vrow"><span>⏰</span>같은 시간대 세션 충돌 없음<span class="vok">✓</span></div>
+            <div class="vrow"><span>🗓️</span>예약 가능 기간 내<span class="vok">✓</span></div>
+            <div class="vstamp">✅ 예약 확정</div>
+          </div></div>
+        </div>
+        <!-- stage 1 -->
+        <div class="stage" data-k="1">
+          <div class="stitle"><span class="si c-mint">🎟️</span>회원권 ↔ 예약 완전 연동</div>
+          <p class="sdesc">예약마다 잔여 횟수가 1씩 차감되고, 0이 되는 순간 회원권이 자동으로 EXPIRED 상태로 전환됩니다.</p>
+          <div class="viz"><div class="v-cnt">
+            <div class="cl">잔여 횟수 (예약할 때마다 −1)</div>
+            <div class="pills"><span class="pl"></span><span class="pl"></span><span class="pl"></span><span class="pl"></span><span class="pl"></span></div>
+            <div class="stat"><span class="b act">● ACTIVE</span><span class="b exp">● EXPIRED</span></div>
+          </div></div>
+        </div>
+        <!-- stage 2 -->
+        <div class="stage" data-k="2">
+          <div class="stitle"><span class="si c-amber">🗓️</span>스케줄 → 세션 자동 생성</div>
+          <p class="sdesc">운영 기간 × 요일을 계산해, 스케줄 한 번 등록으로 수십 개의 수업 세션을 일괄 생성합니다.</p>
+          <div class="viz"><div class="v-gen">
+            <div class="src"><div class="st">주간 스케줄</div><div class="days"><span class="day">월</span><span class="day">수</span><span class="day">금</span></div></div>
+            <div class="arr">→</div>
+            <div class="grid2">
+              <span class="sess" style="animation-delay:.3s">5/4</span><span class="sess" style="animation-delay:.4s">5/6</span><span class="sess" style="animation-delay:.5s">5/8</span><span class="sess" style="animation-delay:.6s">5/11</span>
+              <span class="sess" style="animation-delay:.7s">5/13</span><span class="sess" style="animation-delay:.8s">5/15</span><span class="sess" style="animation-delay:.9s">5/18</span><span class="sess" style="animation-delay:1s">5/20</span>
+              <span class="sess" style="animation-delay:1.1s">5/22</span><span class="sess" style="animation-delay:1.2s">5/25</span><span class="sess" style="animation-delay:1.3s">5/27</span><span class="sess" style="animation-delay:1.4s">5/29</span>
+            </div>
+          </div></div>
+        </div>
+        <!-- stage 3 -->
+        <div class="stage" data-k="3">
+          <div class="stitle"><span class="si c-sky">✅</span>출석 기반 횟수 관리</div>
+          <p class="sdesc">관리자가 세션 출석을 처리하면 ATTENDED는 횟수가 차감되고, 결석은 ABSENT로 기록됩니다.</p>
+          <div class="viz"><div class="v-att">
+            <div class="arow"><span class="av">김</span><span class="nm">김민수</span><span class="bdg"><span class="b pend">PENDING</span><span class="b att">ATTENDED</span></span></div>
+            <div class="arow"><span class="av">이</span><span class="nm">이서연</span><span class="bdg"><span class="b pend">PENDING</span><span class="b att">ATTENDED</span></span></div>
+            <div class="arow"><span class="av">박</span><span class="nm">박지훈</span><span class="bdg"><span class="b pend">PENDING</span><span class="b abs">ABSENT</span></span></div>
+            <div class="arow"><span class="av">최</span><span class="nm">최예린</span><span class="bdg"><span class="b pend">PENDING</span><span class="b att">ATTENDED</span></span></div>
+          </div></div>
+        </div>
+        <!-- stage 4 -->
+        <div class="stage" data-k="4">
+          <div class="stitle"><span class="si c-rose">🛡️</span>이중 무결성 보장</div>
+          <p class="sdesc">잘못된 요청은 애플리케이션 검증과 DB 제약, 두 겹의 방어선에서 모두 차단됩니다.</p>
+          <div class="viz"><div class="v-guard">
+            <div class="token">⚠️ 중복 예약 요청</div>
+            <div class="layer app">① App 검증<small>중복·정원·시간 충돌 확인</small></div>
+            <div class="layer db">② DB 제약<small>UNIQUE · CHECK · FK</small></div>
+            <div class="blocked">⛔ 어느 경로로도 차단됨</div>
+          </div></div>
+        </div>
+        <!-- stage 5 -->
+        <div class="stage" data-k="5">
+          <div class="stitle"><span class="si c-indigo">🛠️</span>운영 도구 &amp; 이력 추적</div>
+          <p class="sdesc">강제 취소·횟수 충전 등 모든 횟수 변동이 이력으로 남아 언제든 추적·감사할 수 있습니다.</p>
+          <div class="viz"><div class="v-log">
+            <div class="lrow lhead"><span>변동 유형</span><span>변동</span><span class="bal">잔여</span></div>
+            <div class="lrow"><span>예약 사용 (USE)</span><span class="neg">−1</span><span class="bal">4</span></div>
+            <div class="lrow"><span>예약 사용 (USE)</span><span class="neg">−1</span><span class="bal">3</span></div>
+            <div class="lrow"><span>취소 복구 (CANCEL)</span><span class="pos">+1</span><span class="bal">4</span></div>
+            <div class="lrow"><span>관리자 충전 (ADMIN)</span><span class="pos">+5</span><span class="bal">9</span></div>
+          </div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════ COLLABORATION ════════ -->
+  <section class="slide">
+    <div class="slide-head reveal d1">
+      <span class="kicker"><span class="dot"></span>Collaboration</span>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:18px;margin-top:14px;flex-wrap:wrap">
+        <h2 class="heading">협업 방식 <span class="accent">GitHub</span></h2>
+        <a class="gh-link" href="https://github.com/ureca-04-miniproject/healthajo" target="_blank" rel="noopener">
+          <svg viewBox="0 0 16 16"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
+          GitHub <span class="url">ureca-04-miniproject/healthajo</span>
+        </a>
+      </div>
+      <p class="subhead" style="margin-top:8px">이슈로 작업을 쪼개고, 브랜치 → PR → 머지 흐름으로 협업했습니다. <b>(코드 리뷰는 시간 여건상 미진행)</b></p>
+    </div>
+    <div class="collab-wrap">
+      <div class="gh-stats reveal d2">
+        <div class="card gh-stat"><span class="gi">🗂️</span><div><div class="n">15</div><div class="l">Issues</div></div></div>
+        <div class="card gh-stat"><span class="gi">🔀</span><div><div class="n">14</div><div class="l">Pull Requests · 전부 Merge</div></div></div>
+        <div class="card gh-stat"><span class="gi">📝</span><div><div class="n">48</div><div class="l">Commits</div></div></div>
+        <div class="card gh-stat"><span class="gi">👥</span><div><div class="n">4</div><div class="l">Contributors</div></div></div>
+      </div>
+
+      <div class="gh-flow reveal d3">
+        <div class="ftitle">🔄 협업 워크플로우</div>
+        <div class="flow-row">
+          <div class="gstep"><div class="gn">STEP 1</div><h4>📌 Issue 생성</h4><p>기능 단위로 작업을 이슈로 분리·할당</p></div>
+          <div class="gsep">→</div>
+          <div class="gstep"><div class="gn">STEP 2</div><h4>🌿 Branch</h4><p>이슈번호-기능명 브랜치에서 개발</p></div>
+          <div class="gsep">→</div>
+          <div class="gstep"><div class="gn">STEP 3</div><h4>🔀 Pull Request</h4><p>작업 완료 후 PR 올리고 변경점 공유</p></div>
+          <div class="gsep">→</div>
+          <div class="gstep off"><span class="skip">시간 여건상 미진행</span><div class="gn">STEP 4</div><h4>👀 Code Review</h4><p>리뷰·코멘트로 품질 점검 (다음 프로젝트 보완 예정)</p></div>
+          <div class="gsep off">→</div>
+          <div class="gstep"><div class="gn">STEP 5</div><h4>✅ Merge</h4><p>PR 확인 후 main 브랜치에 병합</p></div>
+        </div>
+      </div>
+
+      <div class="conv-row reveal d4">
+        <div class="conv"><div class="ct">🌿 브랜치 전략</div><p><code>3-회원-관리-등록조회수정삭제</code> 처럼 <b>이슈 번호 + 기능명</b>으로 브랜치를 분리해 충돌 최소화</p></div>
+        <div class="conv"><div class="ct">💬 커밋 컨벤션</div><p><code>feat:</code> <code>fix:</code> 등 접두어로 변경 의도를 명확히 — 예: <code>feat: 페이지네이션 기능 개발</code></p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════ DEMO VIDEO ════════ -->
+  <section class="slide">
+    <div class="slide-head reveal d1">
+      <span class="kicker"><span class="dot"></span>Demo</span>
+      <h2 class="heading" style="margin-top:14px">시연 <span class="accent">영상</span></h2>
+    </div>
+    <div class="demo-wrap reveal d2">
+      <!-- 발표 시: 아래 박스 안에 영상을 넣으세요.
+           1) 로컬 파일:  <video src="demo.mp4" controls></video>
+           2) 유튜브:     <iframe src="https://www.youtube.com/embed/영상ID" allowfullscreen></iframe>
+           영상을 넣으면 .play~.hint 안내 요소는 지워주세요. -->
+      <div class="demo-box">
+        <div class="play"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div>
+        <h3>시연 영상이 들어갈 자리</h3>
+        <p>건강하조의 실제 동작(로그인 → 예약 → 회원권 차감 → 관리자 운영)을 보여주는 시연 영상을 이곳에서 재생합니다.</p>
+        <span class="hint">💡 발표 전 이 영역에 <b>&lt;video&gt;</b> 또는 유튜브 <b>&lt;iframe&gt;</b>을 삽입하세요</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════ 7. RETROSPECTIVE ════════ -->
+  <section class="slide">
+    <div class="slide-head reveal d1">
+      <span class="kicker"><span class="dot"></span>Retrospective</span>
+      <h2 class="heading" style="margin-top:14px">회고 <span class="accent">팀원별</span></h2>
+                    <!-- <span class="ex-tag" style="margin-top:12px">✍️ 팀원이 각자 직접 작성해 주세요 (Keep · Problem · Try)</span> -->
+    </div>
+    <div class="grid retro-grid">
+      <div class="card retro m1 reveal d2">
+        <div class="rhead"><span class="av">유</span><div><h3>유희준</h3><div class="sub">팀장</div></div></div>
+        <div class="rbody">
+          <div class="slot"><span class="sl-tag k">👍 Keep</span><span class="tx">✍️ 잘한 점을 적어주세요</span></div>
+          <div class="slot"><span class="sl-tag p">🔧 Problem</span><span class="tx">✍️ 아쉬웠던 점을 적어주세요</span></div>
+          <div class="slot"><span class="sl-tag t">🚀 Try</span><span class="tx">✍️ 다음에 시도할 점</span></div>
+        </div>
+      </div>
+      <div class="card retro m2 reveal d2">
+        <div class="rhead"><span class="av">최</span><div><h3>최재웅</h3><div class="sub">팀원</div></div></div>
+        <div class="rbody">
+          <div class="slot"><span class="sl-tag k">👍 Keep</span><span class="tx">✍️ 잘한 점을 적어주세요</span></div>
+          <div class="slot"><span class="sl-tag p">🔧 Problem</span><span class="tx">✍️ 아쉬웠던 점을 적어주세요</span></div>
+          <div class="slot"><span class="sl-tag t">🚀 Try</span><span class="tx">✍️ 다음에 시도할 점</span></div>
+        </div>
+      </div>
+      <div class="card retro m3 reveal d3">
+        <div class="rhead"><span class="av">정</span><div><h3>정종찬</h3><div class="sub">팀원</div></div></div>
+        <div class="rbody">
+          <div class="slot"><span class="sl-tag k">👍 Keep</span><span class="tx">✍️ 잘한 점을 적어주세요</span></div>
+          <div class="slot"><span class="sl-tag p">🔧 Problem</span><span class="tx">✍️ 아쉬웠던 점을 적어주세요</span></div>
+          <div class="slot"><span class="sl-tag t">🚀 Try</span><span class="tx">✍️ 다음에 시도할 점</span></div>
+        </div>
+      </div>
+      <div class="card retro m4 reveal d3">
+        <div class="rhead"><span class="av">김</span><div><h3>김현정</h3><div class="sub">팀원</div></div></div>
+        <div class="rbody">
+          <div class="slot"><span class="sl-tag k">👍 Keep</span><span class="tx">✍️ 잘한 점을 적어주세요</span></div>
+          <div class="slot"><span class="sl-tag p">🔧 Problem</span><span class="tx">✍️ 아쉬웠던 점을 적어주세요</span></div>
+          <div class="slot"><span class="sl-tag t">🚀 Try</span><span class="tx">✍️ 다음에 시도할 점</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════ 8. CLOSING ════════ -->
+  <section class="slide closing">
+    <div class="logo reveal d1" style="display:flex;align-items:center;gap:14px;margin-bottom:8px">
+      <div class="mark" style="width:54px;height:50px;border-radius:14px;background:linear-gradient(135deg,var(--accent),var(--accent-2));display:grid;place-items:center;box-shadow:0 14px 30px -10px rgba(99,102,241,.6);overflow:hidden">
+        <svg viewBox="0 0 128 120" style="width:48px;height:auto"><g stroke="#4338ca" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="76" cy="62" rx="18" ry="15" fill="#4338ca"/><path d="M80 62L100 44" fill="none" stroke-width="27"/></g><g stroke-linecap="round"><ellipse cx="76" cy="62" rx="18" ry="15" fill="#fff"/><path d="M80 62L100 44" fill="none" stroke="#fff" stroke-width="17"/></g><g stroke="#4338ca" stroke-width="4.5" stroke-linejoin="round"><rect x="78" y="36" width="47" height="8" rx="4" fill="#fff"/><rect x="71.5" y="29" width="11" height="22" rx="4" fill="#fff"/><rect x="116" y="29" width="11" height="22" rx="4" fill="#fff"/></g><circle cx="101" cy="42" r="12.5" fill="#4338ca"/><circle cx="101" cy="42" r="9" fill="#fff"/><path d="M46 98C12 72 8 42 28 30 40 23 47 30 48 40 49 30 56 23 68 30 88 42 84 72 46 98Z" fill="#fff" stroke="#4338ca" stroke-width="4.5" stroke-linejoin="round"/><path d="M14 58H28L34 42L43 74L49 48L54 58H74" fill="none" stroke="#6366f1" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <div style="text-align:left">
+        <div style="font-size:22px;font-weight:800;letter-spacing:-.01em">건강하조</div>
+        <div style="font-size:12px;color:var(--ink-3);font-weight:600;letter-spacing:.06em">HEALTHAJO</div>
+      </div>
+    </div>
+    <h1 class="reveal d2"><span class="grad-text">감사합니다</span></h1>
+    <p class="lead reveal d3">예약부터 회원권·세션·출석까지, 헬스장 운영의 한 흐름을 끝까지 이어붙인 프로젝트였습니다.</p>
+    <div class="team-line reveal d4">
+      <span class="pill lead-pill">유희준 · 팀장</span>
+      <span class="pill">최재웅</span>
+      <span class="pill">정종찬</span>
+      <span class="pill">김현정</span>
+    </div>
+  </section>
+
+</div>
+
+<!-- ── edge arrow buttons ── -->
+<div class="edge-zone left"><button class="nav-arrow" id="navPrev" aria-label="이전 슬라이드"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 5 8 12 15 19"/></svg></button></div>
+<div class="edge-zone right"><button class="nav-arrow" id="navNext" aria-label="다음 슬라이드"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 5 16 12 9 19"/></svg></button></div>
+
+<!-- ── footer / nav ── -->
+<div class="footer">
+  <div class="brand-foot"><span class="mk"><svg viewBox="0 0 128 120"><g stroke="#4338ca" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="76" cy="62" rx="18" ry="15" fill="#4338ca"/><path d="M80 62L100 44" fill="none" stroke-width="27"/></g><g stroke-linecap="round"><ellipse cx="76" cy="62" rx="18" ry="15" fill="#fff"/><path d="M80 62L100 44" fill="none" stroke="#fff" stroke-width="17"/></g><g stroke="#4338ca" stroke-width="4.5" stroke-linejoin="round"><rect x="78" y="36" width="47" height="8" rx="4" fill="#fff"/><rect x="71.5" y="29" width="11" height="22" rx="4" fill="#fff"/><rect x="116" y="29" width="11" height="22" rx="4" fill="#fff"/></g><circle cx="101" cy="42" r="12.5" fill="#4338ca"/><circle cx="101" cy="42" r="9" fill="#fff"/><path d="M46 98C12 72 8 42 28 30 40 23 47 30 48 40 49 30 56 23 68 30 88 42 84 72 46 98Z" fill="#fff" stroke="#4338ca" stroke-width="4.5" stroke-linejoin="round"/><path d="M14 58H28L34 42L43 74L49 48L54 58H74" fill="none" stroke="#6366f1" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>건강하조 · 헬스장 예약 관리 시스템</div>
+  <div class="dots" id="dots"></div>
+  <div class="count"><span id="cur">1</span> / <span id="total">8</span></div>
+</div>
+
+<script>
+  const slides=[...document.querySelectorAll('.slide')];
+  const dotsBox=document.getElementById('dots');
+  const prog=document.getElementById('progress');
+  const cur=document.getElementById('cur');
+  let i=0;
+  document.getElementById('total').textContent=slides.length;
+
+  slides.forEach((_,n)=>{
+    const b=document.createElement('button');
+    b.onclick=()=>go(n);
+    dotsBox.appendChild(b);
+  });
+  const dots=[...dotsBox.children];
+
+  const btnPrev=document.getElementById('navPrev');
+  const btnNext=document.getElementById('navNext');
+
+  function go(n){
+    i=Math.max(0,Math.min(slides.length-1,n));
+    slides.forEach((s,k)=>s.classList.toggle('active',k===i));
+    dots.forEach((d,k)=>d.classList.toggle('on',k===i));
+    prog.style.width=((i+1)/slides.length*100)+'%';
+    cur.textContent=i+1;
+    // hide arrows at the deck boundaries
+    btnPrev.classList.toggle('gone',i===0);
+    btnNext.classList.toggle('gone',i===slides.length-1);
+    // restart reveal animations
+    slides[i].querySelectorAll('.reveal').forEach(el=>{
+      el.style.animation='none';void el.offsetHeight;el.style.animation='';
+    });
+    // draw the ER diagram when its slide opens
+    if(slides[i].querySelector('#erdCanvas')) requestAnimationFrame(()=>requestAnimationFrame(playERD));
+    // replay the highlights visual when its slide opens
+    if(slides[i].querySelector('.hl-stage')) requestAnimationFrame(()=>requestAnimationFrame(()=>selectHL(hlCur)));
+    // replay the description pipeline when its slide opens
+    if(slides[i].querySelector('.dpanels')) requestAnimationFrame(()=>requestAnimationFrame(()=>selectDesc(descCur)));
+    // stagger-reveal the table of contents when its slide opens
+    if(slides[i].querySelector('.toc')) requestAnimationFrame(()=>requestAnimationFrame(playTOC));
+  }
+  function playTOC(){
+    document.querySelectorAll('.toc .toc-item').forEach((it,k)=>{
+      it.classList.remove('in'); void it.offsetWidth;
+      it.style.animationDelay=(120+k*130)+'ms'; it.classList.add('in');
+    });
+  }
+  document.querySelectorAll('.toc .toc-item').forEach(it=>{
+    it.addEventListener('click',()=>go(+it.dataset.go));
+  });
+  function next(){go(i+1)}
+  function prev(){go(i-1)}
+  btnPrev.addEventListener('click',e=>{e.stopPropagation();prev();});
+  btnNext.addEventListener('click',e=>{e.stopPropagation();next();});
+
+  // reveal arrows when the cursor nears the left/right edge
+  const EDGE=170;
+  window.addEventListener('mousemove',e=>{
+    btnPrev.classList.toggle('show', e.clientX < EDGE);
+    btnNext.classList.toggle('show', e.clientX > window.innerWidth - EDGE);
+  });
+  document.addEventListener('mouseleave',()=>{
+    btnPrev.classList.remove('show');
+    btnNext.classList.remove('show');
+  });
+
+  document.addEventListener('keydown',e=>{
+    if(['ArrowRight','ArrowDown',' ','PageDown'].includes(e.key)){e.preventDefault();next();}
+    else if(['ArrowLeft','ArrowUp','PageUp'].includes(e.key)){e.preventDefault();prev();}
+    else if(e.key==='Home')go(0);
+    else if(e.key==='End')go(slides.length-1);
+    else if(e.key==='f'||e.key==='F'){if(!document.fullscreenElement)document.documentElement.requestFullscreen();else document.exitFullscreen();}
+  });
+  // swipe
+  let sx=0;
+  addEventListener('touchstart',e=>sx=e.touches[0].clientX);
+  addEventListener('touchend',e=>{const d=e.changedTouches[0].clientX-sx;if(Math.abs(d)>50)(d<0?next:prev)();});
+
+  // ── ER diagram connectors: parent →(verb) child, orthogonal routing ──
+  // fs/ts = attach side (l/r/t/b), fo/to = offset along that side,
+  // lx/ly = lane offset for the connector run, req = NOT NULL (solid) vs nullable (dashed)
+  const ERD_EDGES=[
+    {f:'n_programs',t:'n_schedules',fs:'b',ts:'t',label:'운영',req:true},
+    {f:'n_schedules',t:'n_weekdays',fs:'b',ts:'t',label:'요일',req:true},
+    {f:'n_programs',t:'n_sessions',fs:'r',ts:'l',to:-14,label:'편성',req:true},
+    {f:'n_schedules',t:'n_sessions',fs:'r',ts:'l',to:16,label:'생성',req:true},
+    {f:'n_instructors',t:'n_sessions',fs:'t',ts:'b',label:'배정',req:false},
+    {f:'n_users',t:'n_memberships',fs:'r',ts:'l',to:14,label:'보유',req:true,lx:-16},
+    {f:'n_programs',t:'n_memberships',fs:'b',ts:'l',to:-14,label:'대상',req:true,stair:true},
+    {f:'n_users',t:'n_reservations',fs:'r',ts:'l',to:16,label:'신청',req:true,lx:18},
+    {f:'n_sessions',t:'n_reservations',fs:'r',ts:'l',to:-12,label:'예약',req:true},
+    {f:'n_memberships',t:'n_reservations',fs:'t',ts:'b',label:'차감',req:false},
+    {f:'n_memberships',t:'n_histories',fs:'r',ts:'l',label:'기록',req:true}
+  ];
+  const ERD_COLOR={n_users:'#6366f1',n_instructors:'#64748b',n_programs:'#3b82f6',n_schedules:'#f59e0b',n_sessions:'#8b5cf6',n_memberships:'#22c55e',n_reservations:'#ef4444'};
+
+  function sidePt(r,side,off){off=off||0;
+    if(side==='l')return{x:r.l,y:r.cy+off,dir:[-1,0]};
+    if(side==='r')return{x:r.r,y:r.cy+off,dir:[1,0]};
+    if(side==='t')return{x:r.cx+off,y:r.t,dir:[0,-1]};
+    return{x:r.cx+off,y:r.b,dir:[0,1]};
+  }
+  function roundedPath(pts,r){
+    let d=`M${pts[0].x},${pts[0].y}`;
+    for(let i=1;i<pts.length-1;i++){
+      const p=pts[i],pa=pts[i-1],pb=pts[i+1];
+      const v1={x:p.x-pa.x,y:p.y-pa.y},l1=Math.hypot(v1.x,v1.y)||1;
+      const v2={x:pb.x-p.x,y:pb.y-p.y},l2=Math.hypot(v2.x,v2.y)||1;
+      const rr=Math.min(r,l1/2,l2/2);
+      d+=` L${(p.x-v1.x/l1*rr).toFixed(1)},${(p.y-v1.y/l1*rr).toFixed(1)} Q${p.x},${p.y} ${(p.x+v2.x/l2*rr).toFixed(1)},${(p.y+v2.y/l2*rr).toFixed(1)}`;
+    }
+    const e=pts[pts.length-1]; d+=` L${e.x},${e.y}`; return d;
+  }
+
+  function drawERD(){
+    const canvas=document.getElementById('erdCanvas'), svg=document.getElementById('erdLines');
+    if(!canvas||!svg) return;
+    const W=canvas.clientWidth, H=canvas.clientHeight;
+    if(!W) return;                                  // slide hidden → skip
+    svg.setAttribute('viewBox',`0 0 ${W} ${H}`);
+    const R=id=>{const n=document.getElementById(id);return{l:n.offsetLeft,t:n.offsetTop,r:n.offsetLeft+n.offsetWidth,b:n.offsetTop+n.offsetHeight,cx:n.offsetLeft+n.offsetWidth/2,cy:n.offsetTop+n.offsetHeight/2};};
+    let html='';
+    ERD_EDGES.forEach((e,idx)=>{
+      const a=R(e.f), b=R(e.t);
+      const s=sidePt(a,e.fs,e.fo), t=sidePt(b,e.ts,e.to);
+      let pts;
+      if(e.stair){                                  // long L-route through the row gap
+        const laneY=H*0.33, gapX=b.l-26;
+        pts=[s,{x:s.x,y:laneY},{x:gapX,y:laneY},{x:gapX,y:t.y},t];
+      }else if((e.fs==='r'||e.fs==='l')&&(e.ts==='l'||e.ts==='r')){
+        const mx=(s.x+t.x)/2+(e.lx||0);
+        pts=[s,{x:mx,y:s.y},{x:mx,y:t.y},t];
+      }else if((e.fs==='t'||e.fs==='b')&&(e.ts==='t'||e.ts==='b')){
+        const my=(s.y+t.y)/2+(e.ly||0);
+        pts=[s,{x:s.x,y:my},{x:t.x,y:my},t];
+      }else{                                        // mixed (vertical → horizontal)
+        pts=(e.fs==='b'||e.fs==='t')?[s,{x:s.x,y:t.y},t]:[s,{x:t.x,y:s.y},t];
+      }
+      const col=ERD_COLOR[e.f]||'#94a3b8';
+      const d=roundedPath(pts,11);
+      // arrowhead at child end, oriented along last segment
+      const pen=pts[pts.length-2], end=t;
+      const ang=Math.atan2(end.y-pen.y,end.x-pen.x), aw=5.5, al=9;
+      const ax=end.x-end.dir[0]*1, ay=end.y-end.dir[1]*1;
+      const a1x=ax-al*Math.cos(ang)+aw*Math.sin(ang), a1y=ay-al*Math.sin(ang)-aw*Math.cos(ang);
+      const a2x=ax-al*Math.cos(ang)-aw*Math.sin(ang), a2y=ay-al*Math.sin(ang)+aw*Math.cos(ang);
+      // label at the middle vertex segment
+      const mi=Math.floor((pts.length-1)/2), m1=pts[mi], m2=pts[mi+1];
+      const lx=(m1.x+m2.x)/2, ly=(m1.y+m2.y)/2;
+      const lw=e.label.length*13+12;
+      html+=`<path class="edge${e.req?'':' opt'}" data-i="${idx}" d="${d}" stroke="${col}"/>`+
+            `<path class="head" data-i="${idx}" d="M${ax},${ay} L${a1x.toFixed(1)},${a1y.toFixed(1)} L${a2x.toFixed(1)},${a2y.toFixed(1)} Z" fill="${col}"/>`+
+            `<g class="lbl" data-i="${idx}"><rect x="${(lx-lw/2).toFixed(1)}" y="${(ly-11).toFixed(1)}" width="${lw}" height="22" rx="7"/><text x="${lx.toFixed(1)}" y="${(ly+4).toFixed(1)}" text-anchor="middle" fill="${col}">${e.label}</text></g>`;
+    });
+    svg.innerHTML=html;
+    applyErdVisibility();          // only show what's been revealed so far (BFS)
+  }
+
+  // ── BFS reveal: programs → connected → next level, one by one ──
+  const erdNbr={};
+  ERD_EDGES.forEach((e,i)=>{
+    (erdNbr[e.f]=erdNbr[e.f]||[]).push({e:i,n:e.t});
+    (erdNbr[e.t]=erdNbr[e.t]||[]).push({e:i,n:e.f});
+  });
+  const erdShownNodes=new Set(), erdShownEdges=new Set();
+  let erdBfsTimers=[];
+  function applyErdVisibility(){
+    document.querySelectorAll('#erdCanvas .node').forEach(n=>n.classList.toggle('erd-hide',!erdShownNodes.has(n.id)));
+    const svg=document.getElementById('erdLines');
+    if(svg) svg.querySelectorAll('.edge,.head,.lbl').forEach(el=>el.classList.toggle('show',erdShownEdges.has(+el.dataset.i)));
+  }
+  function playERD(){
+    erdBfsTimers.forEach(clearTimeout); erdBfsTimers=[];
+    erdShownNodes.clear(); erdShownEdges.clear();
+    document.querySelectorAll('#erdCanvas .node').forEach(n=>n.classList.remove('pop','dim','lit'));
+    drawERD();                     // build edges (all hidden initially)
+    // BFS order from programs
+    const order=[{node:'n_programs',edge:null}], seen=new Set(['n_programs']), q=['n_programs'];
+    while(q.length){
+      (erdNbr[q.shift()]||[]).forEach(({e,n})=>{ if(!seen.has(n)){seen.add(n);q.push(n);order.push({node:n,edge:e});} });
+    }
+    const STEP=420;
+    order.forEach((step,k)=>{
+      erdBfsTimers.push(setTimeout(()=>{
+        erdShownNodes.add(step.node);
+        const node=document.getElementById(step.node);
+        if(node){ node.classList.remove('erd-hide','pop'); void node.offsetWidth; node.classList.add('pop'); }
+        // reveal every edge between this node and already-shown nodes
+        (erdNbr[step.node]||[]).forEach(({e,n})=>{ if(erdShownNodes.has(n)) erdShownEdges.add(e); });
+        applyErdVisibility();
+      }, 150+k*STEP));
+    });
+  }
+
+  // ── ERD hover focus (dbdiagram.io style, cascading) ──
+  // for each node, an ordered reveal sequence: children (하위) first, then parents (부모)
+  const erdSeq={};
+  [...new Set(ERD_EDGES.flatMap(e=>[e.f,e.t]))].forEach(id=>{
+    const children=[], parents=[];
+    ERD_EDGES.forEach((e,i)=>{
+      if(e.f===id) children.push({e:i,n:e.t});
+      else if(e.t===id) parents.push({e:i,n:e.f});
+    });
+    erdSeq[id]=[...children,...parents];   // 자식 먼저 → 부모
+  });
+  const STEP=600;          // delay between each connected table
+  let erdTimers=[];
+  const erdStop=()=>{erdTimers.forEach(clearTimeout);erdTimers=[];};
+  function erdHover(id){
+    erdStop();
+    const seq=erdSeq[id]||[];
+    const nodes=[...document.querySelectorAll('#erdCanvas .node')];
+    const svg=document.getElementById('erdLines');
+    const edgeEls=svg?[...svg.querySelectorAll('.edge,.head,.lbl')]:[];
+    // start: hovered node lights, everything else dimmed
+    nodes.forEach(n=>{n.classList.toggle('lit',n.id===id);n.classList.toggle('dim',n.id!==id);});
+    edgeEls.forEach(el=>{el.classList.remove('elit');el.classList.add('edim');});
+    // reveal each connected line + its table together, one by one
+    seq.forEach((item,k)=>{
+      erdTimers.push(setTimeout(()=>{
+        edgeEls.forEach(el=>{ if(+el.dataset.i===item.e){el.classList.add('elit');el.classList.remove('edim');} });
+        const nn=document.getElementById(item.n);
+        if(nn) nn.classList.remove('dim');
+      }, 200 + k*STEP));
+    });
+  }
+  function erdClear(){
+    erdStop();
+    document.querySelectorAll('#erdCanvas .node').forEach(n=>n.classList.remove('lit','dim'));
+    const svg=document.getElementById('erdLines');
+    if(svg) svg.querySelectorAll('.edge,.head,.lbl').forEach(el=>el.classList.remove('elit','edim'));
+  }
+  document.querySelectorAll('#erdCanvas .node').forEach(n=>{
+    n.addEventListener('mouseenter',()=>erdHover(n.id));
+    n.addEventListener('mouseleave',erdClear);
+  });
+
+  let rzt; addEventListener('resize',()=>{clearTimeout(rzt);rzt=setTimeout(drawERD,150);});
+
+  // ── interactive highlights ──
+  let hlCur=0;
+  const hlItems=[...document.querySelectorAll('.hl-item')];
+  const hlStages=[...document.querySelectorAll('.hl-stage .stage')];
+  function selectHL(k){
+    hlCur=k;
+    hlItems.forEach((it,j)=>it.classList.toggle('active',j===k));
+    hlStages.forEach(st=>st.classList.remove('on'));
+    const st=hlStages[k];
+    if(st){ void st.offsetWidth; st.classList.add('on'); }   // reflow → replay animations
+  }
+  hlItems.forEach(it=>it.addEventListener('click',()=>selectHL(+it.dataset.k)));
+
+  // ── interactive description tabs ──
+  let descCur=0;
+  const descTabs=[...document.querySelectorAll('.desc-tab')];
+  const descPanels=[...document.querySelectorAll('.dpanel')];
+  function selectDesc(k){
+    descCur=k;
+    descTabs.forEach((t,j)=>t.classList.toggle('active',j===k));
+    descPanels.forEach(p=>p.classList.remove('on'));
+    const p=descPanels[k];
+    if(p){ void p.offsetWidth; p.classList.add('on'); }
+  }
+  descTabs.forEach(t=>t.addEventListener('click',()=>selectDesc(+t.dataset.d)));
+
+  go(0);
+</script>
+</body>
+</html>

@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 120" width="128" height="120" role="img" aria-label="건강하조 로고">
+  <defs>
+    <linearGradient id="ghaj" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#6366f1"/>
+      <stop offset="1" stop-color="#8b5cf6"/>
+    </linearGradient>
+  </defs>
+  <rect width="128" height="120" rx="22" fill="url(#ghaj)"/>
+  <!-- 팔: 외곽선(진한 인디고, 뒤) -->
+  <g stroke="#4338ca" stroke-width="9" stroke-linecap="round" stroke-linejoin="round">
+    <ellipse cx="76" cy="62" rx="18" ry="15" fill="#4338ca"/>
+    <path d="M80 62L100 44" fill="none" stroke-width="27"/>
+  </g>
+  <!-- 팔: 흰색(앞) -->
+  <g stroke-linecap="round">
+    <ellipse cx="76" cy="62" rx="18" ry="15" fill="#fff"/>
+    <path d="M80 62L100 44" fill="none" stroke="#fff" stroke-width="17"/>
+  </g>
+  <!-- 덤벨 -->
+  <g stroke="#4338ca" stroke-width="4.5" stroke-linejoin="round">
+    <rect x="78" y="36" width="47" height="8" rx="4" fill="#fff"/>
+    <rect x="71.5" y="29" width="11" height="22" rx="4" fill="#fff"/>
+    <rect x="116" y="29" width="11" height="22" rx="4" fill="#fff"/>
+  </g>
+  <!-- 주먹 -->
+  <circle cx="101" cy="42" r="12.5" fill="#4338ca"/>
+  <circle cx="101" cy="42" r="9" fill="#fff"/>
+  <!-- 하트 -->
+  <path d="M46 98 C 12 72 8 42 28 30 C 40 23 47 30 48 40 C 49 30 56 23 68 30 C 88 42 84 72 46 98 Z" fill="#fff" stroke="#4338ca" stroke-width="4.5" stroke-linejoin="round"/>
+  <!-- 심박 비트 -->
+  <path d="M14 58 H28 L34 42 L43 74 L49 48 L54 58 H74" fill="none" stroke="#6366f1" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
