@@ -84,7 +84,7 @@
   h1.title{font-size:64px;font-weight:800;line-height:1.04;letter-spacing:-.02em}
   h2.heading{font-size:42px;font-weight:800;letter-spacing:-.02em;line-height:1.1}
   .heading .accent{color:var(--accent)}
-  .subhead{font-size:18px;color:var(--ink-2);font-weight:500;line-height:1.6}
+  .subhead{font-size:21px;color:var(--ink-2);font-weight:500;line-height:1.6}
   .slide-head{margin-bottom:34px}
   .grad-text{background:linear-gradient(120deg,var(--accent),var(--accent-2) 55%,#ec4899);-webkit-background-clip:text;background-clip:text;color:transparent}
 
@@ -130,7 +130,10 @@
   .grid{display:grid;gap:18px}
 
   /* === Slide 1 : title === */
-  .cover{justify-content:center;align-items:flex-start}
+  .cover{justify-content:center}
+  .cover-grid{flex:1;display:grid;grid-template-columns:1fr 1.05fr;gap:36px;align-items:center;width:100%;min-height:0}
+  .cover-left{display:flex;flex-direction:column;align-items:flex-start}
+  .cover-right{position:relative;height:100%;min-height:0}
   .cover .logo{display:flex;align-items:center;gap:16px;margin-bottom:30px}
   .cover .mark{width:66px;height:62px;border-radius:18px;background:linear-gradient(135deg,var(--accent),var(--accent-2));display:grid;place-items:center;box-shadow:0 14px 30px -10px rgba(99,102,241,.6);overflow:hidden}
   .cover .mark svg{width:60px;height:auto}
@@ -142,17 +145,18 @@
   .chip{background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:10px 18px;font-size:14px;font-weight:700;color:var(--ink-2);box-shadow:var(--shadow-sm);display:flex;align-items:center;gap:8px}
   .chip i{width:8px;height:8px;border-radius:50%;display:inline-block}
 
-  /* === table of contents === */
-  .toc-wrap{flex:1;display:grid;grid-template-columns:1fr 1.12fr;gap:24px;align-items:center;min-height:0}
-  .toc{display:flex;flex-direction:column;gap:9px}
-  .toc-item{display:flex;align-items:center;gap:16px;padding:10px 18px;background:var(--surface);border:1px solid var(--line);border-radius:13px;box-shadow:var(--shadow-sm);cursor:pointer;opacity:0;text-align:left;transition:transform .2s,box-shadow .2s,border-color .2s}
-  .toc-item.in{animation:tocIn .5s both}
-  .toc-item:hover{transform:translateX(7px);box-shadow:var(--shadow);border-color:transparent}
-  .toc-item .no{font-size:18px;font-weight:800;color:var(--accent);width:26px;flex-shrink:0;font-variant-numeric:tabular-nums}
-  .toc-item .ti{font-size:20px;width:26px;text-align:center;flex-shrink:0}
-  .toc-item .tt{font-size:17px;font-weight:800;color:var(--ink)}
-  .toc-item .en{margin-left:auto;font-size:12.5px;color:var(--ink-3);font-weight:700;letter-spacing:.02em}
-  @keyframes tocIn{from{opacity:0;transform:translateX(-28px)}to{opacity:1;transform:none}}
+  /* === table of contents (1:2 인덱스) === */
+  .toc-list{flex:1;display:flex;flex-direction:column;justify-content:space-evenly;min-height:0;padding:4px 0}
+  .tl-item{display:grid;grid-template-columns:1fr 2fr;align-items:center;gap:30px;cursor:pointer;opacity:0;background:none;border:none;text-align:left;transition:transform .25s cubic-bezier(.16,.84,.44,1)}
+  .tl-item.in{animation:tfIn .55s both}
+  .tl-item:hover{transform:translateX(12px)}
+  .tl-l{display:flex;align-items:center;gap:18px;min-width:0}
+  .tl-item .no{font-size:33px;font-weight:800;width:50px;flex-shrink:0;font-variant-numeric:tabular-nums;line-height:1;background:linear-gradient(135deg,var(--accent),var(--accent-2));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .tl-item .ic{font-size:23px;flex-shrink:0;line-height:1;width:30px;height:34px;display:grid;place-items:center}
+  .tl-item .tt{font-size:23px;font-weight:800;color:var(--ink);letter-spacing:-.02em;line-height:1}
+  .tl-item .en{font-size:18px;font-weight:700;color:var(--ink-3);letter-spacing:.1em;line-height:1;align-self:center;transition:color .25s}
+  .tl-item:hover .tt,.tl-item:hover .en{color:var(--accent)}
+  @keyframes tfIn{from{opacity:0;transform:translateX(-26px)}to{opacity:1;transform:none}}
 
   /* TOC right-side 3D app mockup */
   .toc-visual{position:relative;height:100%;display:grid;place-items:center;min-height:0}
@@ -184,17 +188,17 @@
   .app3d .mfoot .pg{width:16px;height:11px;border-radius:4px;background:var(--bg);border:1px solid var(--line)}
   .toc-visual .fchip{position:absolute;background:#fff;border:1px solid var(--line);border-radius:999px;padding:7px 13px;font-size:12.5px;font-weight:800;color:var(--ink);box-shadow:var(--shadow-sm);display:flex;align-items:center;gap:7px;animation:floaty 4s ease-in-out infinite;z-index:5}
   .toc-visual .fchip i{width:8px;height:8px;border-radius:50%}
-  @keyframes floaty{0%,100%{transform:translateY(0)}50%{transform:translateY(-11px)}}
+  @keyframes floaty{0%,100%{transform:translateY(0) rotate(var(--rot,0deg))}50%{transform:translateY(-11px) rotate(var(--rot,0deg))}}
 
   /* === team === */
   .team-grid{grid-template-columns:repeat(4,1fr);margin-top:8px}
   .member{padding:30px 24px;text-align:center;position:relative;overflow:hidden;transition:.3s}
   .member:hover{transform:translateY(-6px);box-shadow:var(--shadow)}
   .member .ava{width:84px;height:84px;border-radius:50%;margin:0 auto 18px;display:grid;place-items:center;font-size:30px;font-weight:800;color:#fff}
-  .member .nm{font-size:22px;font-weight:800}
-  .member .role{margin-top:8px;font-size:13px;font-weight:700;color:var(--accent);background:var(--accent-soft);padding:5px 12px;border-radius:999px;display:inline-block}
+  .member .nm{font-size:25px;font-weight:800}
+  .member .role{margin-top:8px;font-size:16px;font-weight:700;color:var(--accent);background:var(--accent-soft);padding:5px 13px;border-radius:999px;display:inline-block}
   .member .lead-badge{position:absolute;top:14px;right:14px;font-size:13px;font-weight:800;color:#fff;background:linear-gradient(135deg,var(--amber),#f97316);padding:4px 11px;border-radius:999px;box-shadow:var(--shadow-sm)}
-  .member .desc{margin-top:14px;font-size:13px;color:var(--ink-3);line-height:1.5}
+  .member .desc{margin-top:14px;font-size:14px;color:var(--ink-2);line-height:1.5}
 
   /* === topic / overview === */
   .topic-wrap{flex:1;display:flex;flex-direction:column;gap:16px;min-height:0}
@@ -206,7 +210,7 @@
   .ps-tag{display:inline-flex;align-items:center;gap:7px;width:fit-content;font-size:13px;font-weight:800;letter-spacing:.04em;padding:5px 12px;border-radius:999px}
   .ps-tag.p{background:var(--rose-soft);color:var(--rose)}
   .ps-tag.s{background:var(--accent-soft);color:var(--accent)}
-  .ps p{font-size:15.5px;line-height:1.55;color:var(--ink-2);font-weight:500}
+  .ps p{font-size:18.5px;line-height:1.55;color:var(--ink-2);font-weight:500}
   .ps p b{color:var(--ink);font-weight:800}
   .ps-arrow{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:3}
   .ps-arrow span{width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#fff;display:grid;place-items:center;font-size:22px;font-weight:800;box-shadow:0 10px 24px -6px rgba(99,102,241,.7);border:3px solid #fff}
@@ -215,9 +219,9 @@
   .val{padding:18px 18px 16px;display:flex;flex-direction:column;gap:9px;position:relative;overflow:hidden;transition:transform .25s,box-shadow .25s;cursor:default}
   .val:hover{transform:translateY(-5px);box-shadow:var(--shadow)}
   .val .ic{width:44px;height:44px;border-radius:13px;display:grid;place-items:center;font-size:22px}
-  .val h4{font-size:16px;font-weight:800;line-height:1.3}
-  .val p{font-size:12.5px;color:var(--ink-2);line-height:1.5;font-weight:500}
-  .val .tag{font-size:12px;font-weight:700;color:var(--ink-3);padding-top:9px;border-top:1px dashed var(--line)}
+  .val h4{font-size:17.5px;font-weight:800;line-height:1.3}
+  .val p{font-size:15px;color:var(--ink-2);line-height:1.5;font-weight:500}
+  .val .tag{font-size:13px;font-weight:700;color:var(--ink-3);padding-top:9px;border-top:1px dashed var(--line)}
   .val .hint{position:absolute;top:14px;right:15px;font-size:12px;font-weight:700;color:var(--ink-3);opacity:0;transition:opacity .25s}
   .val:hover .hint{opacity:.7}
   /* wide interactive visual; fills the middle so desc sits just above the tag */
@@ -267,7 +271,7 @@
   .stat-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
   .stat{display:flex;align-items:center;gap:14px;padding:14px 20px}
   .stat .n{font-size:34px;font-weight:800;line-height:1;background:linear-gradient(120deg,var(--accent),var(--accent-2));-webkit-background-clip:text;background-clip:text;color:transparent}
-  .stat .l{font-size:13px;color:var(--ink-2);font-weight:700;line-height:1.35}
+  .stat .l{font-size:14px;color:var(--ink-2);font-weight:700;line-height:1.35}
 
   /* === ERD diagram === */
   .erd-wrap{flex:1;display:flex;flex-direction:column;gap:12px;min-height:0}
@@ -281,8 +285,8 @@
   .erd-lines .lbl{opacity:0;transition:opacity .12s ease}
   .erd-lines .lbl.show{opacity:1}
   .erd-lines .lbl rect{fill:#fff;stroke:var(--line);stroke-width:1}
-  .erd-lines .lbl text{font-size:12px;font-weight:800;font-family:inherit}
-  .node{position:absolute;width:206px;background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow-sm);z-index:2;overflow:hidden;cursor:default;transition:box-shadow .15s,transform .15s,opacity .12s ease,filter .12s ease}
+  .erd-lines .lbl text{font-size:13px;font-weight:800;font-family:inherit}
+  .node{position:absolute;width:218px;background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow-sm);z-index:2;overflow:hidden;cursor:default;transition:box-shadow .15s,transform .15s,opacity .12s ease,filter .12s ease}
   .node.pop{animation:nodePop .5s both}
   .node.erd-hide{opacity:0;transform:translateY(8px) scale(.97);pointer-events:none}
   @keyframes nodePop{from{opacity:0;transform:translateY(12px) scale(.96)}to{opacity:1;transform:none}}
@@ -295,23 +299,23 @@
   .erd-lines path.edge.elit{opacity:1!important;stroke-width:3}
   .erd-lines path.head.elit{opacity:1!important}
   .erd-lines .lbl.elit{opacity:1!important}
-  .node .nh{padding:6px 11px;color:#fff;font-weight:800;font-size:13px;display:flex;align-items:center;gap:7px;white-space:nowrap}
-  .node .nh .ko{font-size:12px;font-weight:600;opacity:.92;margin-left:auto;white-space:nowrap}
-  .node ul{list-style:none;padding:5px 11px 4px;display:flex;flex-direction:column;gap:3px}
-  .node li{font-size:12px;display:flex;align-items:center;gap:6px;color:var(--ink-2);font-weight:600;white-space:nowrap}
+  .node .nh{padding:7px 12px;color:#fff;font-weight:800;font-size:14px;display:flex;align-items:center;gap:7px;white-space:nowrap}
+  .node .nh .ko{font-size:13px;font-weight:600;opacity:.92;margin-left:auto;white-space:nowrap}
+  .node ul{list-style:none;padding:5px 12px 5px;display:flex;flex-direction:column;gap:3px}
+  .node li{font-size:13px;display:flex;align-items:center;gap:6px;color:var(--ink-2);font-weight:600;white-space:nowrap}
   .node li .nm{color:var(--ink);font-weight:700}
-  .node li .ty{margin-left:auto;font-size:12px;color:var(--ink-3);font-weight:600}
-  .node .more{font-size:12px;color:var(--ink-3);font-weight:600;padding:0 11px 6px}
-  .k{font-size:12px;font-weight:800;min-width:22px;text-align:center;border-radius:5px;padding:0 4px;flex-shrink:0}
+  .node li .ty{margin-left:auto;font-size:13px;color:var(--ink-3);font-weight:600}
+  .node .more{font-size:12.5px;color:var(--ink-3);font-weight:600;padding:0 12px 7px}
+  .k{font-size:12.5px;font-weight:800;min-width:23px;text-align:center;border-radius:5px;padding:1px 5px;flex-shrink:0}
   .k.pk{background:#fef0c7;color:#b45309}
   .k.fk{background:var(--accent-soft);color:var(--accent)}
   .k.uq{background:var(--mint-soft);color:#15803d}
   .erd-foot{display:flex;align-items:center;gap:9px;flex-wrap:wrap;background:var(--surface);border:1px solid var(--line);border-radius:13px;padding:9px 15px;box-shadow:var(--shadow-sm)}
-  .cstr{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;font-weight:700;color:var(--ink-2)}
+  .cstr{display:inline-flex;align-items:center;gap:7px;font-size:13.5px;font-weight:700;color:var(--ink-2)}
   .cstr b{color:var(--ink);font-weight:800}
-  .cstr .ci{font-size:14px}
+  .cstr .ci{font-size:15px}
   .erd-foot .sep{width:1px;height:18px;background:var(--line)}
-  .erd-foot .legend{margin-left:auto;display:flex;gap:11px;font-size:12.5px;font-weight:700;color:var(--ink-2);align-items:center}
+  .erd-foot .legend{margin-left:auto;display:flex;gap:11px;font-size:13.5px;font-weight:700;color:var(--ink-2);align-items:center}
   .erd-foot .legend span{display:inline-flex;align-items:center;gap:5px}
   .crd{display:inline-flex;align-items:center;gap:4px;font-weight:800;color:var(--accent)}
   .crd .o{width:19px;height:19px;border-radius:50%;border:1.6px solid var(--accent);font-size:12px;display:grid;place-items:center;background:#fff}
@@ -334,13 +338,13 @@
   .step .st p{font-size:13px;color:var(--ink-3);margin-top:2px;line-height:1.45}
   .rules{display:flex;gap:12px}
   .rule{flex:1;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 15px;box-shadow:var(--shadow-sm);display:flex;flex-direction:column;gap:6px}
-  .rule .ri{font-size:20px}
-  .rule h5{font-size:13.5px;font-weight:800;color:var(--ink)}
-  .rule p{font-size:12.5px;color:var(--ink-3);line-height:1.4;font-weight:500}
-  .rules-head{font-size:14px;font-weight:800;color:var(--ink);margin-bottom:-4px;display:flex;align-items:center;gap:8px}
+  .rule .ri{font-size:22px}
+  .rule h5{font-size:16px;font-weight:800;color:var(--ink)}
+  .rule p{font-size:14.5px;color:var(--ink-3);line-height:1.45;font-weight:500}
+  .rules-head{font-size:15.5px;font-weight:800;color:var(--ink);margin-bottom:-4px;display:flex;align-items:center;gap:8px}
   /* status-transition badges (description bottom) */
   .sflow{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-top:6px}
-  .sb{font-size:12px;font-weight:800;padding:4px 10px;border-radius:7px}
+  .sb{font-size:13px;font-weight:800;padding:5px 11px;border-radius:7px}
   .sa{color:var(--ink-3);font-weight:800;font-size:13px}
   .sb.cf{background:var(--sky-soft);color:var(--sky)}
   .sb.cx{background:#f1f1f1;color:var(--ink-3)}
@@ -352,10 +356,10 @@
 
   /* description — interactive tabs + pipeline */
   .desc-tabs{display:flex;gap:11px}
-  .desc-tab{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:11px 20px;cursor:pointer;font-weight:800;font-size:15px;color:var(--ink-2);box-shadow:var(--shadow-sm);transition:transform .2s,box-shadow .2s}
+  .desc-tab{display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--line);border-radius:13px;padding:16px 32px;cursor:pointer;font-weight:800;font-size:19px;color:var(--ink-2);box-shadow:var(--shadow-sm);transition:transform .2s,box-shadow .2s}
   .desc-tab:hover{transform:translateY(-2px)}
-  .desc-tab .ti{font-size:19px}
-  .desc-tab .tg{font-size:12px;font-weight:800;padding:3px 10px;border-radius:7px;background:var(--bg);color:var(--ink-3);border:1px solid var(--line)}
+  .desc-tab .ti{font-size:24px}
+  .desc-tab .tg{font-size:13px;font-weight:800;padding:3px 11px;border-radius:7px;background:var(--bg);color:var(--ink-3);border:1px solid var(--line)}
   .desc-tab.active{color:#fff;border-color:transparent}
   .desc-tab.active.u{background:linear-gradient(135deg,#3b82f6,#0ea5e9)}
   .desc-tab.active.a{background:linear-gradient(135deg,var(--accent),var(--accent-2))}
@@ -364,15 +368,15 @@
   .dpanel{position:absolute;inset:0;display:none;align-items:center}
   .dpanel.on{display:flex}
   .pipe{display:flex;align-items:stretch;gap:0;width:100%}
-  .pstep{flex:1;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px 15px;box-shadow:var(--shadow-sm);display:flex;flex-direction:column;gap:9px;opacity:0}
+  .pstep{flex:1;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:24px 20px;box-shadow:var(--shadow-sm);display:flex;flex-direction:column;gap:13px;opacity:0}
   .dpanel.on .pstep{animation:slideUp .45s both}
-  .pstep .pn{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;font-weight:800;font-size:14px}
+  .pstep .pn{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;font-weight:800;font-size:19px}
   .pstep.u .pn{background:var(--sky-soft);color:var(--sky)}
   .pstep.a .pn{background:var(--accent-soft);color:var(--accent)}
-  .pstep h4{font-size:14.5px;font-weight:800;line-height:1.3}
-  .pstep .mini{display:inline-block;font-size:12px;font-weight:800;padding:1px 7px;border-radius:5px;background:var(--bg);color:var(--ink-2);border:1px solid var(--line);margin-top:3px}
-  .pstep p{font-size:12.5px;color:var(--ink-3);line-height:1.45;font-weight:500;margin-top:auto}
-  .parrow{display:flex;align-items:center;color:#c2c7e0;font-size:22px;font-weight:800;padding:0 6px}
+  .pstep h4{font-size:18.5px;font-weight:800;line-height:1.3}
+  .pstep .mini{display:inline-block;font-size:14px;font-weight:800;padding:2px 9px;border-radius:6px;background:var(--bg);color:var(--ink-2);border:1px solid var(--line);margin-top:3px}
+  .pstep p{font-size:15.5px;color:var(--ink-3);line-height:1.5;font-weight:500;margin-top:auto}
+  .parrow{display:flex;align-items:center;color:#c2c7e0;font-size:28px;font-weight:800;padding:0 9px}
   @keyframes slideUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
 
   /* === highlights (interactive 1:2) === */
@@ -384,17 +388,17 @@
   .hl-item.active::before{content:"";position:absolute;inset:0;background:linear-gradient(110deg,var(--accent-soft),#fff 80%);z-index:0}
   .hl-item>*{position:relative;z-index:1}
   .hl-item .hi{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;font-size:22px;flex-shrink:0}
-  .hl-item .ht h4{font-size:15px;font-weight:800;line-height:1.25}
-  .hl-item .ht span{font-size:12px;color:var(--ink-3);font-weight:700}
+  .hl-item .ht h4{font-size:16.5px;font-weight:800;line-height:1.25}
+  .hl-item .ht span{font-size:13px;color:var(--ink-3);font-weight:700}
   .hl-item .idx{margin-left:auto;font-size:13px;font-weight:800;color:var(--ink-3)}
   .hl-item.active .idx{color:var(--accent)}
 
   .hl-stage{position:relative;background:linear-gradient(160deg,#fff,#f3f4ff);border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow-sm);overflow:hidden;min-height:0}
   .stage{position:absolute;inset:0;display:none;flex-direction:column;padding:28px 32px}
   .stage.on{display:flex}
-  .stage .stitle{font-size:19px;font-weight:800;display:flex;align-items:center;gap:10px}
+  .stage .stitle{font-size:21px;font-weight:800;display:flex;align-items:center;gap:10px}
   .stage .stitle .si{width:38px;height:38px;border-radius:11px;display:grid;place-items:center;font-size:20px}
-  .stage .sdesc{font-size:13.5px;color:var(--ink-2);font-weight:500;line-height:1.5;margin:8px 0 0}
+  .stage .sdesc{font-size:16px;color:var(--ink-2);font-weight:500;line-height:1.55;margin:8px 0 0}
   .stage .viz{flex:1;display:flex;align-items:center;justify-content:center;min-height:0;padding:8px 0}
   .stage.on .stitle{animation:rise .5s both}
   .stage.on .sdesc{animation:rise .5s .06s both}
@@ -508,7 +512,7 @@
   .req2{flex:1;display:grid;grid-template-columns:1.5fr 1fr;gap:0;min-height:0}
   .req-left{display:flex;flex-direction:column;min-height:0;padding-right:26px}
   .req-side{display:flex;flex-direction:column;gap:12px;min-height:0;padding-left:26px;border-left:1.5px dashed var(--line)}
-  .rq-sec-t{font-size:14px;font-weight:800;color:var(--ink);display:flex;align-items:center;gap:9px;margin-bottom:11px}
+  .rq-sec-t{font-size:15.5px;font-weight:800;color:var(--ink);display:flex;align-items:center;gap:9px;margin-bottom:11px}
   .rq-sec-t .tag{font-size:12px;font-weight:800;padding:3px 10px;border-radius:7px}
   .rule-list{display:flex;flex-direction:column;gap:9px;flex:1;min-height:0}
   .rl{flex:1;display:flex;align-items:center;gap:15px;background:var(--surface);border:1px solid var(--line);border-radius:13px;padding:0 18px 0 23px;box-shadow:var(--shadow-sm);position:relative;overflow:hidden;transition:transform .2s,box-shadow .2s}
@@ -517,26 +521,26 @@
   .rl .rnum{font-size:18px;font-weight:800;color:var(--line);flex-shrink:0;width:18px}
   .rl .ic{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;font-size:21px;flex-shrink:0}
   .rl .rtx{flex:1;min-width:0}
-  .rl .rtx h4{font-size:15px;font-weight:800;line-height:1.2}
-  .rl .rtx p{font-size:12.5px;color:var(--ink-2);line-height:1.4;margin-top:3px;font-weight:500}
+  .rl .rtx h4{font-size:17px;font-weight:800;line-height:1.2}
+  .rl .rtx p{font-size:14px;color:var(--ink-2);line-height:1.45;margin-top:4px;font-weight:500}
   .rl .rtx p b{color:var(--ink);font-weight:700}
-  .rl .code{flex-shrink:0;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;font-weight:700;padding:6px 11px;border-radius:8px;white-space:nowrap}
+  .rl .code{flex-shrink:0;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13.5px;font-weight:700;padding:7px 12px;border-radius:8px;white-space:nowrap}
   .rl.cr::before{background:var(--rose)}    .rl.cr .code{color:var(--rose);background:var(--rose-soft)}
   .rl.cm::before{background:var(--mint)}    .rl.cm .code{color:#15803d;background:var(--mint-soft)}
   .rl.ca::before{background:var(--amber)}   .rl.ca .code{color:#b45309;background:var(--amber-soft)}
   .rl.cs::before{background:var(--sky)}     .rl.cs .code{color:var(--sky);background:var(--sky-soft)}
   .rl.ci::before{background:var(--accent)}  .rl.ci .code{color:var(--accent);background:var(--accent-soft)}
   .auth-card{background:linear-gradient(135deg,#f5f6ff,#eef0ff);border:1px solid var(--line);border-radius:14px;padding:8px 16px;box-shadow:var(--shadow-sm);flex:0 0 auto}
-  .auth-row{display:flex;align-items:center;gap:12px;font-size:13.5px;font-weight:600;color:var(--ink-2);padding:9px 0}
+  .auth-row{display:flex;align-items:center;gap:12px;font-size:15px;font-weight:600;color:var(--ink-2);padding:10px 0}
   .auth-row + .auth-row{border-top:1px dashed rgba(99,102,241,.2)}
   .auth-row .ai{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;font-size:17px;flex-shrink:0;background:var(--surface)}
   .auth-row b{color:var(--ink);font-weight:800}
   .role-box{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:13px 17px;box-shadow:var(--shadow-sm);flex:1;display:flex;flex-direction:column;min-height:0}
-  .role-box .rt{font-size:14px;font-weight:800;display:flex;align-items:center;gap:8px;margin-bottom:8px}
+  .role-box .rt{font-size:15.5px;font-weight:800;display:flex;align-items:center;gap:8px;margin-bottom:8px}
   .role-box .rt .tag{font-size:12px;font-weight:800;padding:3px 9px;border-radius:7px}
   .role-box .rt .cnt{margin-left:auto;font-size:12px;color:var(--ink-3);font-weight:700}
-  .role-list{display:flex;flex-direction:column;gap:4px;flex:1;justify-content:space-evenly}
-  .role-list .ri2{display:flex;align-items:center;gap:10px;font-size:13px;font-weight:600;color:var(--ink-2)}
+  .role-list{display:grid;grid-template-columns:repeat(2,1fr);gap:9px 14px;flex:1;align-content:center}
+  .role-list .ri2{display:flex;align-items:center;gap:9px;font-size:14px;font-weight:600;color:var(--ink-2);white-space:nowrap;min-width:0}
   .role-list .ri2 .b{width:7px;height:7px;border-radius:50%;flex-shrink:0}
   .role-box.adm .ri2 .b{background:var(--accent)}
   .role-box.usr .ri2 .b{background:var(--sky)}
@@ -544,28 +548,28 @@
   /* === collaboration === */
   .collab-wrap{flex:1;display:flex;flex-direction:column;gap:16px;min-height:0}
   .gh-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
-  .gh-stat{display:flex;align-items:center;gap:14px;padding:16px 20px}
-  .gh-stat .gi{font-size:26px}
-  .gh-stat .n{font-size:30px;font-weight:800;line-height:1;background:linear-gradient(120deg,var(--accent),var(--accent-2));-webkit-background-clip:text;background-clip:text;color:transparent}
-  .gh-stat .l{font-size:13px;color:var(--ink-2);font-weight:700;margin-top:3px}
-  .gh-flow{flex:1;display:flex;flex-direction:column;justify-content:center;gap:13px}
-  .gh-flow .ftitle{font-size:14px;font-weight:800;color:var(--ink);display:flex;align-items:center;gap:8px}
+  .gh-stat{display:flex;align-items:center;gap:14px;padding:15px 20px}
+  .gh-stat .gi{font-size:27px}
+  .gh-stat .n{font-size:33px;font-weight:800;line-height:1;background:linear-gradient(120deg,var(--accent),var(--accent-2));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .gh-stat .l{font-size:13.5px;color:var(--ink-2);font-weight:700;margin-top:3px}
+  .gh-flow{flex:1;display:flex;flex-direction:column;justify-content:center;gap:18px}
+  .gh-flow .ftitle{font-size:21px;font-weight:800;color:var(--ink);display:flex;align-items:center;gap:8px}
   .flow-row{display:flex;align-items:stretch;gap:0}
-  .gstep{flex:1;background:var(--surface);border:1px solid var(--line);border-radius:13px;padding:15px 16px;box-shadow:var(--shadow-sm);position:relative}
-  .gstep .gn{font-size:12px;font-weight:800;color:var(--accent);background:var(--accent-soft);width:fit-content;padding:2px 9px;border-radius:6px;margin-bottom:8px}
-  .gstep h4{font-size:15px;font-weight:800;display:flex;align-items:center;gap:7px}
-  .gstep p{font-size:12.5px;color:var(--ink-3);line-height:1.4;margin-top:4px;font-weight:500}
+  .gstep{flex:1;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px 20px;box-shadow:var(--shadow-sm);position:relative;display:flex;flex-direction:column;justify-content:center}
+  .gstep .gn{font-size:14px;font-weight:800;color:var(--accent);background:var(--accent-soft);width:fit-content;padding:3px 11px;border-radius:6px;margin-bottom:12px}
+  .gstep h4{font-size:19.5px;font-weight:800;display:flex;align-items:center;gap:7px}
+  .gstep p{font-size:15.5px;color:var(--ink-3);line-height:1.5;margin-top:8px;font-weight:500}
   .gstep.off{background:repeating-linear-gradient(135deg,#f4f4f7,#f4f4f7 7px,#ececf2 7px,#ececf2 14px);border-style:dashed;opacity:.78;box-shadow:none}
   .gstep.off h4,.gstep.off p{color:var(--ink-3);filter:grayscale(1)}
   .gstep.off .gn{background:#e6e6ee;color:#9aa0bd}
   .gstep.off .skip{position:absolute;top:11px;right:13px;font-size:12px;font-weight:800;color:#9aa0bd;background:#fff;border:1px solid var(--line);border-radius:6px;padding:2px 8px}
   .gsep.off{color:#cdd1e4}
-  .gsep{display:flex;align-items:center;color:var(--ink-3);font-size:20px;font-weight:800;padding:0 8px}
-  .conv-row{display:flex;gap:12px}
-  .conv{flex:1;background:var(--surface);border:1px solid var(--line);border-radius:13px;padding:13px 16px;box-shadow:var(--shadow-sm)}
-  .conv .ct{font-size:13px;font-weight:800;margin-bottom:5px}
-  .conv code{font-size:12.5px;font-weight:700;color:var(--accent);background:var(--accent-soft);padding:2px 7px;border-radius:5px;font-family:ui-monospace,Menlo,Consolas,monospace}
-  .conv p{font-size:12.5px;color:var(--ink-3);font-weight:500;line-height:1.45;margin-top:3px}
+  .gsep{display:flex;align-items:center;color:var(--ink-3);font-size:28px;font-weight:800;padding:0 10px}
+  .conv-row{display:flex;gap:14px}
+  .conv{flex:1;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:24px 26px;box-shadow:var(--shadow-sm)}
+  .conv .ct{font-size:18.5px;font-weight:800;margin-bottom:9px}
+  .conv code{font-size:15.5px;font-weight:700;color:var(--accent);background:var(--accent-soft);padding:3px 10px;border-radius:5px;font-family:ui-monospace,Menlo,Consolas,monospace}
+  .conv p{font-size:16.5px;color:var(--ink-3);font-weight:500;line-height:1.6;margin-top:6px}
 
   /* github link button */
   .gh-link{display:inline-flex;align-items:center;gap:9px;background:#1f2328;color:#fff;font-weight:700;font-size:14px;padding:11px 18px;border-radius:11px;text-decoration:none;box-shadow:var(--shadow-sm);transition:.2s}
@@ -574,33 +578,41 @@
   .gh-link .url{font-weight:500;opacity:.7;font-size:13px}
 
   /* === demo video === */
-  .demo-wrap{flex:1;display:flex;flex-direction:column;gap:14px;min-height:0}
-  .demo-box{flex:1;border:2px dashed #c9cde6;border-radius:20px;background:linear-gradient(160deg,#fbfbff,#f1f2fb);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;text-align:center;min-height:0;position:relative;overflow:hidden}
-  .demo-box .play{width:84px;height:84px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent-2));display:grid;place-items:center;box-shadow:0 16px 36px -10px rgba(99,102,241,.6)}
-  .demo-box .play svg{width:34px;height:34px;fill:#fff;margin-left:5px}
-  .demo-box h3{font-size:22px;font-weight:800}
-  .demo-box p{font-size:14px;color:var(--ink-2);font-weight:500;line-height:1.6;max-width:560px}
-  .demo-box .hint{font-size:12.5px;color:var(--ink-3);font-weight:600;background:var(--surface);border:1px solid var(--line);border-radius:9px;padding:8px 14px}
-  .demo-box video,.demo-box iframe{position:absolute;inset:0;width:100%;height:100%;border:none;border-radius:18px;object-fit:cover}
+  .demo-wrap{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:26px;min-height:0}
+  .demo-card{display:flex;flex-direction:column;min-height:0;background:var(--surface);border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow-sm);padding:16px;transition:transform .25s,box-shadow .25s}
+  .demo-card:hover{transform:translateY(-5px);box-shadow:var(--shadow)}
+  .demo-card .dc-head{display:flex;align-items:center;gap:11px;margin:2px 4px 14px}
+  .demo-card .dc-tag{font-size:13px;font-weight:800;padding:5px 13px;border-radius:999px}
+  .demo-card.adm .dc-tag{background:var(--accent-soft);color:var(--accent)}
+  .demo-card.usr .dc-tag{background:var(--sky-soft);color:var(--sky)}
+  .demo-card .dc-name{font-size:19px;font-weight:800;color:var(--ink)}
+  .demo-card .dc-sub{margin-left:auto;font-size:13px;color:var(--ink-3);font-weight:600}
+  .demo-frame{flex:1;min-height:0;border-radius:14px;overflow:hidden;background:#0f1222;display:flex;flex-direction:column;box-shadow:0 16px 38px -16px rgba(15,18,34,.55)}
+  .dc-bar{flex-shrink:0;display:flex;align-items:center;gap:7px;padding:10px 14px}
+  .demo-card.adm .dc-bar{background:linear-gradient(135deg,var(--accent),var(--accent-2))}
+  .demo-card.usr .dc-bar{background:linear-gradient(135deg,#3b82f6,#0ea5e9)}
+  .dc-bar i{width:9px;height:9px;border-radius:50%;background:rgba(255,255,255,.5)}
+  .dc-bar span{margin-left:6px;color:#fff;font-size:12.5px;font-weight:700;opacity:.92}
+  .demo-frame video{flex:1;min-height:0;width:100%;object-fit:contain;background:#0f1222;display:block}
 
-  /* === retrospective (per member) === */
-  .retro-grid{grid-template-columns:repeat(4,1fr);flex:1;gap:14px}
-  .retro{padding:0;display:flex;flex-direction:column;overflow:hidden}
-  .retro .rhead{padding:15px 18px;display:flex;align-items:center;gap:12px;color:#fff}
-  .retro.m1 .rhead{background:linear-gradient(135deg,#6366f1,#8b5cf6)}
-  .retro.m2 .rhead{background:linear-gradient(135deg,#3b82f6,#0ea5e9)}
-  .retro.m3 .rhead{background:linear-gradient(135deg,#22c55e,#10b981)}
-  .retro.m4 .rhead{background:linear-gradient(135deg,#8b5cf6,#a855f7)}
-  .retro .rhead .av{width:42px;height:42px;border-radius:50%;background:rgba(255,255,255,.25);display:grid;place-items:center;font-size:19px;font-weight:800;flex-shrink:0}
-  .retro .rhead h3{font-size:19px;font-weight:800;line-height:1.1}
-  .retro .rhead .sub{font-size:12px;font-weight:700;opacity:.9;margin-top:2px}
-  .retro .rbody{flex:1;padding:13px 15px;display:flex;flex-direction:column;gap:9px}
-  .retro .slot{flex:1;border:1.5px dashed #d3d7ea;border-radius:11px;padding:9px 12px;display:flex;flex-direction:column;gap:5px;background:var(--bg)}
-  .retro .slot .sl-tag{font-size:12px;font-weight:800;width:fit-content;padding:2px 8px;border-radius:6px}
-  .retro .slot .sl-tag.k{background:var(--mint-soft);color:#15803d}
-  .retro .slot .sl-tag.p{background:var(--amber-soft);color:var(--amber)}
-  .retro .slot .sl-tag.t{background:var(--accent-soft);color:var(--accent)}
-  .retro .slot .tx{font-size:12.5px;color:var(--ink-3);line-height:1.4;font-style:italic}
+  /* === retrospective (사람=행, K/P/T=열 매트릭스) === */
+  .retro-rows{flex:1;display:flex;flex-direction:column;gap:12px;min-height:0}
+  .rrow{flex:1;display:flex;align-items:stretch;gap:0;background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow-sm);overflow:hidden;min-height:0}
+  .rrow .who{flex:0 0 152px;display:flex;align-items:center;gap:12px;padding:0 18px;color:#fff}
+  .rrow.m1 .who{background:linear-gradient(135deg,#6366f1,#8b5cf6)}
+  .rrow.m2 .who{background:linear-gradient(135deg,#3b82f6,#0ea5e9)}
+  .rrow.m3 .who{background:linear-gradient(135deg,#22c55e,#10b981)}
+  .rrow.m4 .who{background:linear-gradient(135deg,#8b5cf6,#a855f7)}
+  .rrow .who .av{width:42px;height:42px;border-radius:50%;background:rgba(255,255,255,.25);display:grid;place-items:center;font-size:19px;font-weight:800;flex-shrink:0}
+  .rrow .who h3{font-size:19px;font-weight:800;line-height:1.15}
+  .rrow .who .sub{font-size:14px;font-weight:700;opacity:.9}
+  .rrow .rcell{flex:1;min-width:0;display:flex;flex-direction:column;gap:7px;padding:13px 16px;border-left:1px solid var(--line);overflow:hidden}
+  .rrow .rcell .sl-tag{flex-shrink:0;font-size:13.5px;font-weight:800;width:fit-content;padding:4px 11px;border-radius:7px}
+  .sl-tag.k{background:var(--mint-soft);color:#15803d}
+  .sl-tag.p{background:var(--amber-soft);color:var(--amber)}
+  .sl-tag.t{background:var(--accent-soft);color:var(--accent)}
+  .rrow .rcell p{margin:0;font-size:15.5px;color:var(--ink);line-height:1.55;font-weight:500}
+  .rrow .rcell.empty p{color:var(--ink-3);font-style:italic;font-weight:400}
   .ex-tag{display:inline-block;font-size:13px;font-weight:800;letter-spacing:.04em;color:var(--ink-3);border:1px dashed var(--ink-3);border-radius:6px;padding:4px 11px;margin-bottom:16px;text-transform:uppercase}
 
   /* === closing === */
@@ -640,20 +652,64 @@
 
   <!-- ════════ 1. COVER ════════ -->
   <section class="slide cover active">
-    <div class="logo reveal d1">
-      <div class="mark">
-        <svg viewBox="0 0 128 120"><g stroke="#4338ca" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="76" cy="62" rx="18" ry="15" fill="#4338ca"/><path d="M80 62L100 44" fill="none" stroke-width="27"/></g><g stroke-linecap="round"><ellipse cx="76" cy="62" rx="18" ry="15" fill="#fff"/><path d="M80 62L100 44" fill="none" stroke="#fff" stroke-width="17"/></g><g stroke="#4338ca" stroke-width="4.5" stroke-linejoin="round"><rect x="78" y="36" width="47" height="8" rx="4" fill="#fff"/><rect x="71.5" y="29" width="11" height="22" rx="4" fill="#fff"/><rect x="116" y="29" width="11" height="22" rx="4" fill="#fff"/></g><circle cx="101" cy="42" r="12.5" fill="#4338ca"/><circle cx="101" cy="42" r="9" fill="#fff"/><path d="M46 98C12 72 8 42 28 30 40 23 47 30 48 40 49 30 56 23 68 30 88 42 84 72 46 98Z" fill="#fff" stroke="#4338ca" stroke-width="4.5" stroke-linejoin="round"/><path d="M14 58H28L34 42L43 74L49 48L54 58H74" fill="none" stroke="#6366f1" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <div class="cover-grid">
+      <div class="cover-left">
+        <div class="logo reveal d1">
+          <div class="mark">
+            <svg viewBox="0 0 128 120"><g stroke="#4338ca" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="76" cy="62" rx="18" ry="15" fill="#4338ca"/><path d="M80 62L100 44" fill="none" stroke-width="27"/></g><g stroke-linecap="round"><ellipse cx="76" cy="62" rx="18" ry="15" fill="#fff"/><path d="M80 62L100 44" fill="none" stroke="#fff" stroke-width="17"/></g><g stroke="#4338ca" stroke-width="4.5" stroke-linejoin="round"><rect x="78" y="36" width="47" height="8" rx="4" fill="#fff"/><rect x="71.5" y="29" width="11" height="22" rx="4" fill="#fff"/><rect x="116" y="29" width="11" height="22" rx="4" fill="#fff"/></g><circle cx="101" cy="42" r="12.5" fill="#4338ca"/><circle cx="101" cy="42" r="9" fill="#fff"/><path d="M46 98C12 72 8 42 28 30 40 23 47 30 48 40 49 30 56 23 68 30 88 42 84 72 46 98Z" fill="#fff" stroke="#4338ca" stroke-width="4.5" stroke-linejoin="round"/><path d="M14 58H28L34 42L43 74L49 48L54 58H74" fill="none" stroke="#6366f1" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <div class="nm">건강하조<small>HEALTHAJO</small></div>
+        </div>
+        <span class="kicker reveal d2"><span class="dot"></span>Mini Project · 2026</span>
+        <h1 class="title reveal d3">헬스장 예약·프로그램<br><span class="grad-text">관리 시스템</span></h1>
+        <p class="lead reveal d4">스피닝·요가·필라테스·골프 프로그램의 예약부터 회원권 차감, 세션·출석 관리까지<br>한 흐름으로 잇는 Java Swing 데스크톱 애플리케이션</p>
+        <div class="chips reveal d5">
+          <span class="chip"><i style="background:#6366f1"></i>Java</span>
+          <span class="chip"><i style="background:#3b82f6"></i>Java Swing</span>
+          <span class="chip"><i style="background:#22c55e"></i>MySQL 8.0.35</span>
+          <span class="chip"><i style="background:#f59e0b"></i>JDBC</span>
+        </div>
       </div>
-      <div class="nm">건강하조<small>HEALTHAJO</small></div>
-    </div>
-    <span class="kicker reveal d2"><span class="dot"></span>Mini Project · 2026</span>
-    <h1 class="title reveal d3">헬스장 예약·프로그램<br><span class="grad-text">관리 시스템</span></h1>
-    <p class="lead reveal d4">스피닝·요가·필라테스·골프 프로그램의 예약부터 회원권 차감, 세션·출석 관리까지<br>한 흐름으로 잇는 Java Swing 데스크톱 애플리케이션</p>
-    <div class="chips reveal d5">
-      <span class="chip"><i style="background:#6366f1"></i>Java</span>
-      <span class="chip"><i style="background:#3b82f6"></i>Java Swing</span>
-      <span class="chip"><i style="background:#22c55e"></i>MySQL 8.0.35</span>
-      <span class="chip"><i style="background:#f59e0b"></i>JDBC</span>
+      <div class="cover-right reveal d4">
+        <div class="toc-visual">
+          <div class="toc-stack">
+            <div class="app3d back">
+              <div class="bar"><i></i><i></i><i></i><span class="t">건강하조 · 회원</span></div>
+              <div class="body">
+                <div class="side"><span class="sh"></span><span class="nav on"></span><span class="nav"></span><span class="nav"></span><span class="nav"></span></div>
+                <div class="main">
+                  <div class="mhead"><span class="mt"></span><span class="ms"></span><span class="mb"></span></div>
+                  <div class="row"><span class="tag" style="background:var(--sky-soft)"></span><span class="ln"></span><span class="pct" style="background:var(--mint-soft)"></span></div>
+                  <div class="row"><span class="tag" style="background:var(--mint-soft)"></span><span class="ln"></span><span class="pct" style="background:var(--amber-soft)"></span></div>
+                  <div class="row"><span class="tag" style="background:#ede9ff"></span><span class="ln"></span><span class="pct" style="background:var(--mint-soft)"></span></div>
+                  <div class="mfoot"><span class="pg"></span><span class="pg"></span></div>
+                </div>
+              </div>
+            </div>
+            <div class="app3d front">
+              <div class="bar"><i></i><i></i><i></i><span class="t">건강하조 · 관리자</span></div>
+              <div class="body">
+                <div class="side"><span class="sh"></span><span class="nav on"></span><span class="nav"></span><span class="nav"></span><span class="nav"></span><span class="nav"></span><span class="nav"></span></div>
+                <div class="main">
+                  <div class="mhead"><span class="mt"></span><span class="ms"></span><span class="mb"></span></div>
+                  <div class="row"><span class="tag" style="background:var(--sky-soft)"></span><span class="ln"></span><span class="pct" style="background:var(--mint-soft)"></span></div>
+                  <div class="row"><span class="tag" style="background:var(--amber-soft)"></span><span class="ln"></span><span class="pct" style="background:var(--mint-soft)"></span></div>
+                  <div class="row"><span class="tag" style="background:#ede9ff"></span><span class="ln"></span><span class="pct" style="background:var(--rose-soft)"></span></div>
+                  <div class="row"><span class="tag" style="background:var(--mint-soft)"></span><span class="ln"></span><span class="pct" style="background:var(--mint-soft)"></span></div>
+                  <div class="mfoot"><span class="pg"></span><span class="pg"></span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <span class="fchip" style="top:3%;left:2%;--rot:-6deg;animation-delay:.2s"><i style="background:#6366f1"></i>프로그램</span>
+          <span class="fchip" style="top:13%;right:30%;--rot:4deg;font-size:13.5px;animation-delay:1.3s"><i style="background:#3b82f6"></i>예약</span>
+          <span class="fchip" style="top:33%;right:1%;--rot:7deg;animation-delay:.6s"><i style="background:#ec4899"></i>스케줄</span>
+          <span class="fchip" style="top:50%;left:5%;--rot:-3deg;font-size:13px;animation-delay:1.6s"><i style="background:#22c55e"></i>회원권</span>
+          <span class="fchip" style="top:6%;right:6%;--rot:5deg;animation-delay:.9s"><i style="background:#8b5cf6"></i>세션</span>
+          <span class="fchip" style="bottom:7%;left:24%;--rot:-5deg;font-size:13.5px;animation-delay:2s"><i style="background:#f59e0b"></i>출석</span>
+          <span class="fchip" style="bottom:18%;right:14%;--rot:3deg;animation-delay:.4s"><i style="background:#64748b"></i>강사</span>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -663,55 +719,16 @@
       <span class="kicker"><span class="dot"></span>Contents</span>
       <h2 class="heading" style="margin-top:14px">목차</h2>
     </div>
-    <div class="toc-wrap">
-      <div class="toc">
-        <button class="toc-item" data-go="2"><span class="no">01</span><span class="ti">👥</span><span class="tt">팀 구성</span><span class="en">Team</span></button>
-        <button class="toc-item" data-go="3"><span class="no">02</span><span class="ti">🎯</span><span class="tt">프로젝트 주제</span><span class="en">Topic</span></button>
-        <button class="toc-item" data-go="4"><span class="no">03</span><span class="ti">📋</span><span class="tt">요구사항 정리</span><span class="en">Requirements</span></button>
-        <button class="toc-item" data-go="5"><span class="no">04</span><span class="ti">🗄️</span><span class="tt">데이터 모델 · ERD</span><span class="en">ERD</span></button>
-        <button class="toc-item" data-go="6"><span class="no">05</span><span class="ti">⚙️</span><span class="tt">프로그램 설명</span><span class="en">How it works</span></button>
-        <button class="toc-item" data-go="7"><span class="no">06</span><span class="ti">✨</span><span class="tt">특장점</span><span class="en">Highlights</span></button>
-        <button class="toc-item" data-go="8"><span class="no">07</span><span class="ti">🤝</span><span class="tt">협업 방식</span><span class="en">Collaboration</span></button>
-        <button class="toc-item" data-go="9"><span class="no">08</span><span class="ti">🎬</span><span class="tt">시연 영상</span><span class="en">Demo</span></button>
-        <button class="toc-item" data-go="10"><span class="no">09</span><span class="ti">🪞</span><span class="tt">회고</span><span class="en">Retrospective</span></button>
-      </div>
-      <div class="toc-visual reveal d3">
-        <div class="toc-stack">
-          <!-- 뒤: 회원(USER) 페이지 — 사이드바 메뉴 4개 -->
-          <div class="app3d back">
-            <div class="bar"><i></i><i></i><i></i><span class="t">건강하조 · 회원</span></div>
-            <div class="body">
-              <div class="side"><span class="sh"></span><span class="nav on"></span><span class="nav"></span><span class="nav"></span><span class="nav"></span></div>
-              <div class="main">
-                <div class="mhead"><span class="mt"></span><span class="ms"></span><span class="mb"></span></div>
-                <div class="row"><span class="tag" style="background:var(--sky-soft)"></span><span class="ln"></span><span class="pct" style="background:var(--mint-soft)"></span></div>
-                <div class="row"><span class="tag" style="background:var(--mint-soft)"></span><span class="ln"></span><span class="pct" style="background:var(--amber-soft)"></span></div>
-                <div class="row"><span class="tag" style="background:#ede9ff"></span><span class="ln"></span><span class="pct" style="background:var(--mint-soft)"></span></div>
-                <div class="mfoot"><span class="pg"></span><span class="pg"></span></div>
-              </div>
-            </div>
-          </div>
-          <!-- 앞: 관리자(ADMIN) 페이지 — 사이드바 메뉴 6개 -->
-          <div class="app3d front">
-            <div class="bar"><i></i><i></i><i></i><span class="t">건강하조 · 관리자</span></div>
-            <div class="body">
-              <div class="side"><span class="sh"></span><span class="nav on"></span><span class="nav"></span><span class="nav"></span><span class="nav"></span><span class="nav"></span><span class="nav"></span></div>
-              <div class="main">
-                <div class="mhead"><span class="mt"></span><span class="ms"></span><span class="mb"></span></div>
-                <div class="row"><span class="tag" style="background:var(--sky-soft)"></span><span class="ln"></span><span class="pct" style="background:var(--mint-soft)"></span></div>
-                <div class="row"><span class="tag" style="background:var(--amber-soft)"></span><span class="ln"></span><span class="pct" style="background:var(--mint-soft)"></span></div>
-                <div class="row"><span class="tag" style="background:#ede9ff"></span><span class="ln"></span><span class="pct" style="background:var(--rose-soft)"></span></div>
-                <div class="row"><span class="tag" style="background:var(--mint-soft)"></span><span class="ln"></span><span class="pct" style="background:var(--mint-soft)"></span></div>
-                <div class="mfoot"><span class="pg"></span><span class="pg"></span></div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <span class="fchip" style="top:10%;left:0;animation-delay:.2s"><i style="background:#3b82f6"></i>예약</span>
-        <span class="fchip" style="bottom:24%;left:-2%;animation-delay:1.1s"><i style="background:#22c55e"></i>회원권</span>
-        <span class="fchip" style="bottom:6%;right:8%;animation-delay:.6s"><i style="background:#8b5cf6"></i>세션</span>
-        <span class="fchip" style="top:46%;right:-4%;animation-delay:1.5s"><i style="background:#f59e0b"></i>출석</span>
-      </div>
+    <div class="toc-list">
+      <button class="tl-item" data-go="2"><span class="tl-l"><span class="no">01</span><span class="ic">👥</span><span class="tt">팀 구성</span></span><span class="en">TEAM</span></button>
+      <button class="tl-item" data-go="3"><span class="tl-l"><span class="no">02</span><span class="ic">🎯</span><span class="tt">프로젝트 주제</span></span><span class="en">TOPIC</span></button>
+      <button class="tl-item" data-go="4"><span class="tl-l"><span class="no">03</span><span class="ic">📋</span><span class="tt">요구사항 정리</span></span><span class="en">REQUIREMENTS</span></button>
+      <button class="tl-item" data-go="5"><span class="tl-l"><span class="no">04</span><span class="ic">🗄️</span><span class="tt">데이터 모델 · ERD</span></span><span class="en">ERD</span></button>
+      <button class="tl-item" data-go="6"><span class="tl-l"><span class="no">05</span><span class="ic">⚙️</span><span class="tt">프로그램 설명</span></span><span class="en">HOW IT WORKS</span></button>
+      <button class="tl-item" data-go="7"><span class="tl-l"><span class="no">06</span><span class="ic">✨</span><span class="tt">특장점</span></span><span class="en">HIGHLIGHTS</span></button>
+      <button class="tl-item" data-go="8"><span class="tl-l"><span class="no">07</span><span class="ic">🤝</span><span class="tt">협업 방식</span></span><span class="en">COLLABORATION</span></button>
+      <button class="tl-item" data-go="9"><span class="tl-l"><span class="no">08</span><span class="ic">🎬</span><span class="tt">시연 영상</span></span><span class="en">DEMO</span></button>
+      <button class="tl-item" data-go="10"><span class="tl-l"><span class="no">09</span><span class="ic">🪞</span><span class="tt">회고</span></span><span class="en">RETROSPECTIVE</span></button>
     </div>
   </section>
 
@@ -728,25 +745,25 @@
         <div class="ava bg-indigo">유</div>
         <div class="nm">유희준</div>
         <div class="role">Team Lead</div>
-        <p class="desc">아키텍처 설계 · JDBC 코어 ·<br>인증/회원권 연동 총괄</p>
+        <p class="desc">JDBC 추상화 · 컴포넌트화 · ERD<br>예약 · 사용자 페이지 기능</p>
       </div>
       <div class="card member reveal d3">
         <div class="ava bg-sky">최</div>
         <div class="nm">최재웅</div>
         <div class="role">Developer</div>
-        <p class="desc">프로그램·예약 도메인<br>기능 개발</p>
+        <p class="desc">사용자 관리 화면 설계·구현<br>서브쿼리 기반 데이터 조회</p>
       </div>
       <div class="card member reveal d4">
         <div class="ava bg-mint">정</div>
         <div class="nm">정종찬</div>
         <div class="role">Developer</div>
-        <p class="desc">스케줄·세션 관리<br>기능 개발</p>
+        <p class="desc">프로그램 · 세션 관리<br>강사 배정 · 회원권 발급</p>
       </div>
       <div class="card member reveal d5">
         <div class="ava bg-violet">김</div>
         <div class="nm">김현정</div>
         <div class="role">Developer</div>
-        <p class="desc">회원·출석 관리<br>UI 컴포넌트</p>
+        <p class="desc">회원권 관리<br>UI 컴포넌트 · 화면 구조</p>
       </div>
     </div>
   </section>
@@ -947,7 +964,7 @@
           </ul>
         </div>
 
-        <div class="node" id="n_histories" style="left:73.5%;top:40%;width:236px">
+        <div class="node" id="n_histories" style="left:72%;top:40%;width:250px">
           <div class="nh bg-slate">📜 membership_histories<span class="ko">이력</span></div>
           <ul>
             <li><span class="k pk">PK</span><span class="nm">id</span></li>
@@ -1167,15 +1184,13 @@
       <h2 class="heading" style="margin-top:14px">시연 <span class="accent">영상</span></h2>
     </div>
     <div class="demo-wrap reveal d2">
-      <!-- 발표 시: 아래 박스 안에 영상을 넣으세요.
-           1) 로컬 파일:  <video src="demo.mp4" controls></video>
-           2) 유튜브:     <iframe src="https://www.youtube.com/embed/영상ID" allowfullscreen></iframe>
-           영상을 넣으면 .play~.hint 안내 요소는 지워주세요. -->
-      <div class="demo-box">
-        <div class="play"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div>
-        <h3>시연 영상이 들어갈 자리</h3>
-        <p>건강하조의 실제 동작(로그인 → 예약 → 회원권 차감 → 관리자 운영)을 보여주는 시연 영상을 이곳에서 재생합니다.</p>
-        <span class="hint">💡 발표 전 이 영역에 <b>&lt;video&gt;</b> 또는 유튜브 <b>&lt;iframe&gt;</b>을 삽입하세요</span>
+      <div class="demo-card adm">
+        <div class="dc-head"><span class="dc-tag">🛠️ ADMIN</span><span class="dc-name">관리자 화면</span><span class="dc-sub">회원·프로그램·세션 운영</span></div>
+        <div class="demo-frame"><div class="dc-bar"><i></i><i></i><i></i><span>건강하조 · 관리자</span></div><video src="manager_guide.mp4" controls preload="metadata" playsinline></video></div>
+      </div>
+      <div class="demo-card usr">
+        <div class="dc-head"><span class="dc-tag">👤 USER</span><span class="dc-name">회원 화면</span><span class="dc-sub">예약·회원권·출석 확인</span></div>
+        <div class="demo-frame"><div class="dc-bar"><i></i><i></i><i></i><span>건강하조 · 회원</span></div><video src="user_guide.mp4" controls preload="metadata" playsinline></video></div>
       </div>
     </div>
   </section>
@@ -1187,38 +1202,30 @@
       <h2 class="heading" style="margin-top:14px">회고 <span class="accent">팀원별</span></h2>
                     <!-- <span class="ex-tag" style="margin-top:12px">✍️ 팀원이 각자 직접 작성해 주세요 (Keep · Problem · Try)</span> -->
     </div>
-    <div class="grid retro-grid">
-      <div class="card retro m1 reveal d2">
-        <div class="rhead"><span class="av">유</span><div><h3>유희준</h3><div class="sub">팀장</div></div></div>
-        <div class="rbody">
-          <div class="slot"><span class="sl-tag k">👍 Keep</span><span class="tx">✍️ 잘한 점을 적어주세요</span></div>
-          <div class="slot"><span class="sl-tag p">🔧 Problem</span><span class="tx">✍️ 아쉬웠던 점을 적어주세요</span></div>
-          <div class="slot"><span class="sl-tag t">🚀 Try</span><span class="tx">✍️ 다음에 시도할 점</span></div>
-        </div>
+    <div class="retro-rows">
+      <div class="rrow m1 reveal d2">
+        <div class="who"><span class="av">유</span><div><h3>유희준</h3><span class="sub">팀장</span></div></div>
+        <div class="rcell"><span class="sl-tag k">👍 Keep</span><p>JDBC를 자체 쿼리 빌더로 추상화하고 화면을 재사용 컴포넌트로 구조화했으며, ERD 설계를 주도했다. 예약 기능과 사용자(회원) 페이지 전반을 직접 구축했다.</p></div>
+        <div class="rcell"><span class="sl-tag p">🔧 Problem</span><p>팀 리딩과 작업 스코프·일정 관리가 미흡해, 범위가 커지고 일정이 빠듯해진 점이 아쉬웠다.</p></div>
+        <div class="rcell"><span class="sl-tag t">🚀 Try</span><p>스코프를 줄여 기능을 최소 단위로 좁히고, 역할·일정을 관리하는 리딩 체계를 먼저 세운 뒤 개발을 시작하자.</p></div>
       </div>
-      <div class="card retro m2 reveal d2">
-        <div class="rhead"><span class="av">최</span><div><h3>최재웅</h3><div class="sub">팀원</div></div></div>
-        <div class="rbody">
-          <div class="slot"><span class="sl-tag k">👍 Keep</span><span class="tx">✍️ 잘한 점을 적어주세요</span></div>
-          <div class="slot"><span class="sl-tag p">🔧 Problem</span><span class="tx">✍️ 아쉬웠던 점을 적어주세요</span></div>
-          <div class="slot"><span class="sl-tag t">🚀 Try</span><span class="tx">✍️ 다음에 시도할 점</span></div>
-        </div>
+      <div class="rrow m2 reveal d3">
+        <div class="who"><span class="av">최</span><div><h3>최재웅</h3><span class="sub">팀원</span></div></div>
+        <div class="rcell"><span class="sl-tag k">👍 Keep</span><p>사용자 관리 화면을 설계·구현하고, 실제 DB와 연동해 보유 회원권 수·등록일을 서브쿼리로 조회하도록 구현했다.</p></div>
+        <div class="rcell"><span class="sl-tag p">🔧 Problem</span><p>변경된 설계를 제때 반영하지 못해 미사용 코드가 쌓였고, 작업을 구조화하는 과정이 비효율적이었다.</p></div>
+        <div class="rcell"><span class="sl-tag t">🚀 Try</span><p>예약 이력 탭 DB 연동을 끝내지 못한 점이 아쉬웠다. 마감까지 여유를 두고 담당 부분을 온전히 마무리하고, 팀 코드 리뷰로 품질을 함께 점검하자.</p></div>
       </div>
-      <div class="card retro m3 reveal d3">
-        <div class="rhead"><span class="av">정</span><div><h3>정종찬</h3><div class="sub">팀원</div></div></div>
-        <div class="rbody">
-          <div class="slot"><span class="sl-tag k">👍 Keep</span><span class="tx">✍️ 잘한 점을 적어주세요</span></div>
-          <div class="slot"><span class="sl-tag p">🔧 Problem</span><span class="tx">✍️ 아쉬웠던 점을 적어주세요</span></div>
-          <div class="slot"><span class="sl-tag t">🚀 Try</span><span class="tx">✍️ 다음에 시도할 점</span></div>
-        </div>
+      <div class="rrow m3 reveal d4">
+        <div class="who"><span class="av">정</span><div><h3>정종찬</h3><span class="sub">팀원</span></div></div>
+        <div class="rcell"><span class="sl-tag k">👍 Keep</span><p>프로그램·세션 관리를 맡으며 단순 화면이 아닌 전체 흐름을 먼저 고민했다. 목록·상세·등록·삭제·회원권 일괄 발급, 강사 배정·세션 취소·출석까지 관리자가 실제로 쓰는 흐름을 한 화면에 연결하려 했다.</p></div>
+        <div class="rcell"><span class="sl-tag p">🔧 Problem</span><p>UI 흐름은 잘 잡혔지만 강사 배정·세션 취소가 실제 DB 업데이트까지 이어지지 못해 완성도가 아쉬웠다. 예외 상황·변경 후 화면 갱신을 더 꼼꼼히 확인했으면 좋았겠다.</p></div>
+        <div class="rcell"><span class="sl-tag t">🚀 Try</span><p>영향이 큰 작업(세션 취소·프로그램 삭제)은 예약자 존재·이미 취소됨·횟수 복구 필요 등 예외를 체크리스트로 먼저 정리하자. 강점인 UI 흐름을 데이터 처리·테스트까지 연결해보자.</p></div>
       </div>
-      <div class="card retro m4 reveal d3">
-        <div class="rhead"><span class="av">김</span><div><h3>김현정</h3><div class="sub">팀원</div></div></div>
-        <div class="rbody">
-          <div class="slot"><span class="sl-tag k">👍 Keep</span><span class="tx">✍️ 잘한 점을 적어주세요</span></div>
-          <div class="slot"><span class="sl-tag p">🔧 Problem</span><span class="tx">✍️ 아쉬웠던 점을 적어주세요</span></div>
-          <div class="slot"><span class="sl-tag t">🚀 Try</span><span class="tx">✍️ 다음에 시도할 점</span></div>
-        </div>
+      <div class="rrow m4 reveal d5">
+        <div class="who"><span class="av">김</span><div><h3>김현정</h3><span class="sub">팀원</span></div></div>
+        <div class="rcell"><span class="sl-tag k">👍 Keep</span><p>UI 컴포넌트와 화면 구조를 분리하고, 회원권 기능을 DAO·Service·View 역할로 구분해 데이터 흐름을 설계했다.</p></div>
+        <div class="rcell"><span class="sl-tag p">🔧 Problem</span><p>초기 기능 범위를 너무 크게 잡아 후반에 리팩토링이 필요했고, 전체 흐름 정합·기능 충돌을 점검할 시간이 부족했다.</p></div>
+        <div class="rcell"><span class="sl-tag t">🚀 Try</span><p>큰 구조를 한 번에 잡기보다 '회원 등록 → DB 저장 → 목록 반영'처럼 하나의 흐름을 끝까지 완성한 뒤 다음 기능으로 넘어가 완성도를 높이자.</p></div>
       </div>
     </div>
   </section>
@@ -1295,15 +1302,15 @@
     // replay the description pipeline when its slide opens
     if(slides[i].querySelector('.dpanels')) requestAnimationFrame(()=>requestAnimationFrame(()=>selectDesc(descCur)));
     // stagger-reveal the table of contents when its slide opens
-    if(slides[i].querySelector('.toc')) requestAnimationFrame(()=>requestAnimationFrame(playTOC));
+    if(slides[i].querySelector('.toc-list')) requestAnimationFrame(()=>requestAnimationFrame(playTOC));
   }
   function playTOC(){
-    document.querySelectorAll('.toc .toc-item').forEach((it,k)=>{
+    document.querySelectorAll('.toc-list .tl-item').forEach((it,k)=>{
       it.classList.remove('in'); void it.offsetWidth;
-      it.style.animationDelay=(120+k*130)+'ms'; it.classList.add('in');
+      it.style.animationDelay=(70+k*65)+'ms'; it.classList.add('in');
     });
   }
-  document.querySelectorAll('.toc .toc-item').forEach(it=>{
+  document.querySelectorAll('.toc-list .tl-item').forEach(it=>{
     it.addEventListener('click',()=>go(+it.dataset.go));
   });
   function next(){go(i+1)}
@@ -1323,6 +1330,11 @@
   });
 
   document.addEventListener('keydown',e=>{
+    // 영상이 포커스됐거나 전체화면일 때는 방향키·스페이스를 영상(탐색·재생)에 양보
+    const ae=document.activeElement;
+    const fs=document.fullscreenElement;
+    const onVideo=(ae&&ae.tagName==='VIDEO')||(fs&&(fs.tagName==='VIDEO'||fs.querySelector&&fs.querySelector('video')));
+    if(onVideo && ['ArrowRight','ArrowLeft','ArrowUp','ArrowDown',' '].includes(e.key)) return;
     if(['ArrowRight','ArrowDown',' ','PageDown'].includes(e.key)){e.preventDefault();next();}
     else if(['ArrowLeft','ArrowUp','PageUp'].includes(e.key)){e.preventDefault();prev();}
     else if(e.key==='Home')go(0);
