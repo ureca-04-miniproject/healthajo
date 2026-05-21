@@ -157,8 +157,8 @@ public class SelectStep {
      * {@code SELECT COUNT(*) FROM (inner) AS _count_wrap} 으로 감쌈.
      */
     public long fetchCount() {
-        String sql = "SELECT COUNT(*) FROM (" + buildCoreSql() + ") AS _count_wrap";
-        List<Object> bindings = collectAllBindings();
+        String sql = buildCountSql();
+        List<Object> bindings = collectCountBindings();
         logSql(sql, bindings);
         try (JdbcConnectionFactory.JdbcConnection jc = JdbcConnectionFactory.getInstance().getConnection()) {
             Connection conn = jc.get();
@@ -193,6 +193,39 @@ public class SelectStep {
         // HAVING 절
         if (havingCondition != null) all.addAll(havingCondition.getBindings());
         return all;
+    }
+
+    /**
+     * COUNT 전용 바인딩. SELECT 프로젝션(윈도우 함수 등)은 COUNT 쿼리에서
+     * 제거되므로 FROM·JOIN·WHERE·HAVING 바인딩만 수집한다.
+     */
+    private List<Object> collectCountBindings() {
+        List<Object> all = new ArrayList<>();
+        all.addAll(fromSource.getBindings());
+        for (JoinClause join : joins) all.addAll(join.getBindings());
+        if (condition != null) all.addAll(condition.getBindings());
+        if (havingCondition != null) all.addAll(havingCondition.getBindings());
+        return all;
+    }
+
+    /**
+     * 전체 행 수 SQL. 원본 SELECT 프로젝션(a.*, b.*, …)을 그대로 서브쿼리로
+     * 감싸면 조인 시 동일 컬럼명(id 등)이 중복되어 오류가 나므로,
+     * 프로젝션을 제거하고 COUNT(*)로 직접 센다.
+     * GROUP BY·HAVING이 있을 때만 그룹 수를 세기 위해 {@code SELECT 1}로 감싼다.
+     */
+    private String buildCountSql() {
+        StringBuilder tail = new StringBuilder(" FROM ").append(fromSource.toFromSql());
+        for (JoinClause join : joins) tail.append(" ").append(join.toSql());
+        if (condition != null)        tail.append(" WHERE ").append(condition.getSql());
+        if (!groupByClauses.isEmpty()) tail.append(" GROUP BY ").append(String.join(", ", groupByClauses));
+        if (havingCondition != null)  tail.append(" HAVING ").append(havingCondition.getSql());
+
+        boolean grouped = !groupByClauses.isEmpty() || havingCondition != null;
+        if (grouped) {
+            return "SELECT COUNT(*) FROM (SELECT 1" + tail + ") AS _count_wrap";
+        }
+        return "SELECT COUNT(*)" + tail;
     }
 
     // ── SQL 빌드 ──────────────────────────────────────────────────────
