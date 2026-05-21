@@ -288,7 +288,7 @@
   @keyframes nodePop{from{opacity:0;transform:translateY(12px) scale(.96)}to{opacity:1;transform:none}}
   .node:hover{box-shadow:var(--shadow);z-index:5;transform:translateY(-2px)}
   /* dbdiagram-style hover focus */
-  .node.dim{opacity:.3;filter:grayscale(.55)}
+  .node.dim{opacity:.12;filter:grayscale(1)}
   .node.lit{box-shadow:0 16px 38px -10px rgba(99,102,241,.5);z-index:7;transform:translateY(-2px)}
   .node.lit .nh{filter:saturate(1.15)}
   .erd-lines path.edge.edim,.erd-lines path.head.edim,.erd-lines .lbl.edim{opacity:.07!important}
@@ -1430,24 +1430,16 @@
   function playERD(){
     erdBfsTimers.forEach(clearTimeout); erdBfsTimers=[];
     erdShownNodes.clear(); erdShownEdges.clear();
-    document.querySelectorAll('#erdCanvas .node').forEach(n=>n.classList.remove('pop','dim','lit'));
-    drawERD();                     // build edges (all hidden initially)
-    // BFS order from programs
-    const order=[{node:'n_programs',edge:null}], seen=new Set(['n_programs']), q=['n_programs'];
-    while(q.length){
-      (erdNbr[q.shift()]||[]).forEach(({e,n})=>{ if(!seen.has(n)){seen.add(n);q.push(n);order.push({node:n,edge:e});} });
-    }
-    const STEP=420;
-    order.forEach((step,k)=>{
-      erdBfsTimers.push(setTimeout(()=>{
-        erdShownNodes.add(step.node);
-        const node=document.getElementById(step.node);
-        if(node){ node.classList.remove('erd-hide','pop'); void node.offsetWidth; node.classList.add('pop'); }
-        // reveal every edge between this node and already-shown nodes
-        (erdNbr[step.node]||[]).forEach(({e,n})=>{ if(erdShownNodes.has(n)) erdShownEdges.add(e); });
-        applyErdVisibility();
-      }, 150+k*STEP));
+    // show everything at once (consistent with the rest of the deck)
+    ERD_EDGES.forEach((e,i)=>erdShownEdges.add(i));
+    drawERD();
+    // quick, subtle staggered pop-in on the nodes
+    document.querySelectorAll('#erdCanvas .node').forEach((n,k)=>{
+      erdShownNodes.add(n.id);
+      n.classList.remove('pop','dim','lit','erd-hide'); void n.offsetWidth;
+      n.style.animationDelay=(k*30)+'ms'; n.classList.add('pop');
     });
+    applyErdVisibility();
   }
 
   // ── ERD hover focus (dbdiagram.io style, cascading) ──
@@ -1461,7 +1453,7 @@
     });
     erdSeq[id]=[...children,...parents];   // 자식 먼저 → 부모
   });
-  const STEP=600;          // delay between each connected table
+  const STEP=420;          // delay between each connected table
   let erdTimers=[];
   const erdStop=()=>{erdTimers.forEach(clearTimeout);erdTimers=[];};
   function erdHover(id){
@@ -1479,7 +1471,7 @@
         edgeEls.forEach(el=>{ if(+el.dataset.i===item.e){el.classList.add('elit');el.classList.remove('edim');} });
         const nn=document.getElementById(item.n);
         if(nn) nn.classList.remove('dim');
-      }, 200 + k*STEP));
+      }, 120 + k*STEP));
     });
   }
   function erdClear(){
