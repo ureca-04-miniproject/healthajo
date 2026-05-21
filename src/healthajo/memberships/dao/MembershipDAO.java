@@ -353,9 +353,40 @@ public class MembershipDAO {
             throw new IllegalArgumentException("회원권 ID가 필요합니다.");
         }
 
-        MEMBERSHIP.delete()
-                .where(membershipIdEq(membershipId))
-                .execute();
+        // 회원권을 참조하는 자식 레코드를 먼저 정리한 뒤 삭제 (FK 제약 회피).
+        //  1) membership_histories: membership_id가 NOT NULL → 함께 삭제
+        //  2) reservations:        membership_id가 NULL 허용 → 링크만 해제(예약 기록은 보존)
+        try (JdbcConnectionFactory.JdbcConnection jc = JdbcConnectionFactory.getInstance().getConnection()) {
+            Connection conn = jc.get();
+            boolean prevAuto = conn.getAutoCommit();
+            conn.setAutoCommit(false);
+            try {
+                try (PreparedStatement ps = conn.prepareStatement(
+                        "DELETE FROM membership_histories WHERE membership_id = ?")) {
+                    ps.setLong(1, membershipId);
+                    ps.executeUpdate();
+                }
+                try (PreparedStatement ps = conn.prepareStatement(
+                        "UPDATE reservations SET membership_id = NULL WHERE membership_id = ?")) {
+                    ps.setLong(1, membershipId);
+                    ps.executeUpdate();
+                }
+                try (PreparedStatement ps = conn.prepareStatement(
+                        "DELETE FROM memberships WHERE id = ?")) {
+                    ps.setLong(1, membershipId);
+                    ps.executeUpdate();
+                }
+                conn.commit();
+            } catch (SQLException e) {
+                conn.rollback();
+                throw e;
+            } finally {
+                conn.setAutoCommit(prevAuto);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+            throw new RuntimeException("회원권 삭제 실패 (id=" + membershipId + ")", e);
+        }
     }
 
     private static Condition membershipIdEq(Long membershipId) {
